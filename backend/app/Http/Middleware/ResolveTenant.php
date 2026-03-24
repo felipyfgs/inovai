@@ -1,0 +1,53 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
+
+class ResolveTenant
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $companyId = $request->header('X-Company-Id');
+
+        if ($companyId) {
+            $cacheKey = "tenant:{$user->id}:{$companyId}";
+            
+            $company = Cache::remember($cacheKey, 300, function () use ($user, $companyId) {
+                if ($user->hasRole('admin')) {
+                    return \App\Models\Company::find($companyId);
+                }
+                
+                if ($user->hasRole('accountant')) {
+                    return \App\Models\Company::where('id', $companyId)
+                        ->where('office_id', $user->office_id)
+                        ->first();
+                }
+                
+                return $user->companies()->where('companies.id', $companyId)->first();
+            });
+
+            if (!$company) {
+                return response()->json(['message' => 'Sem permissão para acessar esta empresa.'], 403);
+            }
+
+            $request->merge(['current_company' => $company]);
+            app()->instance('current_company', $company);
+        }
+
+        if ($user->office_id) {
+            app()->instance('current_office', $user->office);
+        }
+
+        return $next($request);
+    }
+}
