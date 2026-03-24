@@ -1,69 +1,112 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { FormError } from '@nuxt/ui'
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+definePageMeta({
+  layout: 'default'
+})
+
+const toast = useToast()
+const loading = ref(false)
 
 const passwordSchema = z.object({
-  current: z.string().min(8, 'Must be at least 8 characters'),
-  new: z.string().min(8, 'Must be at least 8 characters')
+  current_password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password_confirmation: z.string()
+}).refine(data => data.password === data.password_confirmation, {
+  message: 'Senhas não conferem',
+  path: ['password_confirmation']
 })
 
 type PasswordSchema = z.output<typeof passwordSchema>
 
-const password = reactive<Partial<PasswordSchema>>({
-  current: '',
-  new: ''
+const state = reactive<Partial<PasswordSchema>>({
+  current_password: '',
+  password: '',
+  password_confirmation: ''
 })
 
-const validate = (state: Partial<PasswordSchema>): FormError[] => {
-  const errors: FormError[] = []
-  if (state.current && state.new && state.current === state.new) {
-    errors.push({ name: 'new', message: 'Passwords must be different' })
+async function onSubmit(event: FormSubmitEvent<PasswordSchema>) {
+  loading.value = true
+  try {
+    const { put } = useApiMutation()
+    await put('/me/password', event.data)
+    toast.add({ title: 'Senha alterada com sucesso', color: 'success' })
+    resetForm()
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string } } }
+    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao alterar senha.', color: 'error' })
+  } finally {
+    loading.value = false
   }
-  return errors
+}
+
+function resetForm() {
+  state.current_password = ''
+  state.password = ''
+  state.password_confirmation = ''
 }
 </script>
 
 <template>
-  <UPageCard
-    title="Password"
-    description="Confirm your current password before setting a new one."
-    variant="subtle"
-  >
-    <UForm
-      :schema="passwordSchema"
-      :state="password"
-      :validate="validate"
-      class="flex flex-col gap-4 max-w-xs"
+  <UPageHeader
+    title="Segurança"
+    description="Gerencie suas configurações de segurança."
+  />
+
+  <div class="mt-6 space-y-6">
+    <UPageCard
+      title="Alterar Senha"
+      description="Confirme sua senha atual antes de definir uma nova."
+      variant="subtle"
     >
-      <UFormField name="current">
-        <UInput
-          v-model="password.current"
-          type="password"
-          placeholder="Current password"
-          class="w-full"
+      <UForm
+        :schema="passwordSchema"
+        :state="state"
+        class="flex flex-col gap-4 max-w-sm mt-4"
+        @submit="onSubmit"
+      >
+        <UFormField name="current_password" label="Senha atual" required>
+          <UInput
+            v-model="state.current_password"
+            type="password"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField name="password" label="Nova senha" required>
+          <UInput
+            v-model="state.password"
+            type="password"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField name="password_confirmation" label="Confirmar nova senha" required>
+          <UInput
+            v-model="state.password_confirmation"
+            type="password"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UButton
+          type="submit"
+          label="Alterar senha"
+          :loading="loading"
+          class="w-fit"
         />
-      </UFormField>
+      </UForm>
+    </UPageCard>
 
-      <UFormField name="new">
-        <UInput
-          v-model="password.new"
-          type="password"
-          placeholder="New password"
-          class="w-full"
-        />
-      </UFormField>
-
-      <UButton label="Update" class="w-fit" type="submit" />
-    </UForm>
-  </UPageCard>
-
-  <UPageCard
-    title="Account"
-    description="No longer want to use our service? You can delete your account here. This action is not reversible. All information related to this account will be deleted permanently."
-    class="bg-gradient-to-tl from-error/10 from-5% to-default"
-  >
-    <template #footer>
-      <UButton label="Delete account" color="error" />
-    </template>
-  </UPageCard>
+    <UPageCard
+      title="Conta"
+      description="Não quer mais usar nosso serviço? Você pode excluir sua conta aqui. Esta ação não é reversível. Todas as informações relacionadas a esta conta serão excluídas permanentemente."
+      class="bg-gradient-to-tl from-error/10 from-5% to-default"
+    >
+      <template #footer>
+        <UButton label="Excluir conta" color="error" />
+      </template>
+    </UPageCard>
+  </div>
 </template>

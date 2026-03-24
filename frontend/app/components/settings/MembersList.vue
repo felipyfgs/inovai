@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { Member } from '~/types'
 
 defineProps<{
-  members: Member[]
+  members: Array<{ name: string, username: string, role: string, avatar?: any }>
 }>()
 
 const items = [{

@@ -1,158 +1,119 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import type { AuthUser } from '~/types'
 
-const fileRef = ref<HTMLInputElement>()
+definePageMeta({
+  layout: 'default'
+})
+
+const toast = useToast()
+const { user, refreshIdentity } = useSanctumAuth<AuthUser>()
 
 const profileSchema = z.object({
-  name: z.string().min(2, 'Too short'),
-  email: z.string().email('Invalid email'),
-  username: z.string().min(2, 'Too short'),
-  avatar: z.string().optional(),
-  bio: z.string().optional()
+  name: z.string().min(2, 'Mínimo 2 caracteres'),
+  email: z.string().email('E-mail inválido'),
+  phone: z.string().optional()
 })
 
 type ProfileSchema = z.output<typeof profileSchema>
 
-const profile = reactive<Partial<ProfileSchema>>({
-  name: 'Benjamin Canac',
-  email: 'ben@nuxtlabs.com',
-  username: 'benjamincanac',
-  avatar: undefined,
-  bio: undefined
-})
-const toast = useToast()
-async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
-  toast.add({
-    title: 'Success',
-    description: 'Your settings have been updated.',
-    icon: 'i-lucide-check',
-    color: 'success'
-  })
-  console.log(event.data)
-}
+const state = reactive<Partial<ProfileSchema>>({})
+const loading = ref(false)
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-
-  if (!input.files?.length) {
-    return
+watch(user, (u) => {
+  if (u) {
+    state.name = u.name
+    state.email = u.email
+    state.phone = u.phone ?? ''
   }
+}, { immediate: true })
 
-  profile.avatar = URL.createObjectURL(input.files[0]!)
-}
-
-function onFileClick() {
-  fileRef.value?.click()
+async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
+  loading.value = true
+  try {
+    const { put } = useApiMutation()
+    await put('/me', event.data)
+    await refreshIdentity()
+    toast.add({ title: 'Perfil atualizado', color: 'success' })
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string } } }
+    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao atualizar perfil.', color: 'error' })
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
 <template>
+  <UPageHeader
+    title="Meu Perfil"
+    description="Gerencie suas informações pessoais."
+  />
+
   <UForm
-    id="settings"
     :schema="profileSchema"
-    :state="profile"
+    :state="state"
+    class="mt-6"
     @submit="onSubmit"
   >
-    <UPageCard
-      title="Profile"
-      description="These informations will be displayed publicly."
-      variant="naked"
-      orientation="horizontal"
-      class="mb-4"
-    >
-      <UButton
-        form="settings"
-        label="Save changes"
-        color="neutral"
-        type="submit"
-        class="w-fit lg:ms-auto"
-      />
-    </UPageCard>
-
     <UPageCard variant="subtle">
       <UFormField
         name="name"
-        label="Name"
-        description="Will appear on receipts, invoices, and other communication."
+        label="Nome"
+        description="Seu nome completo."
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
         <UInput
-          v-model="profile.name"
+          v-model="state.name"
           autocomplete="off"
+          class="w-full max-w-md"
         />
       </UFormField>
+
       <USeparator />
+
       <UFormField
         name="email"
-        label="Email"
-        description="Used to sign in, for email receipts and product updates."
+        label="E-mail"
+        description="Used for sign in and notifications."
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
         <UInput
-          v-model="profile.email"
+          v-model="state.email"
           type="email"
           autocomplete="off"
+          class="w-full max-w-md"
         />
       </UFormField>
+
       <USeparator />
+
       <UFormField
-        name="username"
-        label="Username"
-        description="Your unique username for logging in and your profile URL."
-        required
+        name="phone"
+        label="Telefone"
+        description="Telefone de contato."
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
         <UInput
-          v-model="profile.username"
-          type="username"
+          v-model="state.phone"
+          type="tel"
           autocomplete="off"
+          class="w-full max-w-md"
         />
       </UFormField>
+
       <USeparator />
-      <UFormField
-        name="avatar"
-        label="Avatar"
-        description="JPG, GIF or PNG. 1MB Max."
-        class="flex max-sm:flex-col justify-between sm:items-center gap-4"
-      >
-        <div class="flex flex-wrap items-center gap-3">
-          <UAvatar
-            :src="profile.avatar"
-            :alt="profile.name"
-            size="lg"
-          />
-          <UButton
-            label="Choose"
-            color="neutral"
-            @click="onFileClick"
-          />
-          <input
-            ref="fileRef"
-            type="file"
-            class="hidden"
-            accept=".jpg, .jpeg, .png, .gif"
-            @change="onFileChange"
-          >
-        </div>
-      </UFormField>
-      <USeparator />
-      <UFormField
-        name="bio"
-        label="Bio"
-        description="Brief description for your profile. URLs are hyperlinked."
-        class="flex max-sm:flex-col justify-between items-start gap-4"
-        :ui="{ container: 'w-full' }"
-      >
-        <UTextarea
-          v-model="profile.bio"
-          :rows="5"
-          autoresize
-          class="w-full"
+
+      <div class="flex justify-end pt-2">
+        <UButton
+          type="submit"
+          label="Salvar alterações"
+          :loading="loading"
         />
-      </UFormField>
+      </div>
     </UPageCard>
   </UForm>
 </template>

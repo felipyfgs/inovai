@@ -13,6 +13,7 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PessoaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\TransportadoraController;
+use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', function (Request $request) {
         return response()->json($request->user()->load(['office.subscription.plan', 'companies', 'roles']));
     });
+    Route::put('/me', [UserController::class, 'updateProfile']);
+    Route::put('/me/password', [UserController::class, 'updatePassword']);
+
+    // Users management
+    Route::apiResource('users', UserController::class);
+    Route::get('users/{user}/companies', [UserController::class, 'companies']);
+    Route::post('users/{user}/companies', [UserController::class, 'attachCompanies']);
+    Route::delete('users/{user}/companies/{company}', [UserController::class, 'detachCompany']);
 
     // Companies (scoped by office)
     Route::apiResource('companies', CompanyController::class);

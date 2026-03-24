@@ -39,7 +39,7 @@ class RegisterController extends Controller
                 'office_id' => $office->id,
             ]);
 
-            $user->assignRole('accountant');
+            $user->assignRole('office_user');
 
             return $user;
         });
