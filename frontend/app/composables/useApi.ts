@@ -30,7 +30,7 @@ export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
 
   const asyncDataOptions: AsyncDataOptions<T> = {
     lazy: lazy ?? false,
-    server: server ?? true,
+    server: server ?? false,
     watch: watchSources.length ? watchSources : undefined
   }
 
