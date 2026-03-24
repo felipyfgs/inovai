@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create roles
         $adminRole = Role::create(['name' => 'admin']);
-        $accountantRole = Role::create(['name' => 'accountant']);
+        $officeUserRole = Role::create(['name' => 'office_user']);
         $companyUserRole = Role::create(['name' => 'company_user']);
 
         // Create permissions
@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $adminRole->givePermissionTo(Permission::all());
-        $accountantRole->givePermissionTo([
+        $officeUserRole->givePermissionTo([
             'manage_companies',
             'manage_users',
             'manage_cadastros',
@@ -106,6 +106,7 @@ class DatabaseSeeder extends Seeder
         $adminOffice = Office::create([
             'name' => 'InovAI Admin',
             'email' => 'admin@inovai.com.br',
+            'type' => 'admin',
         ]);
 
         $admin = User::create([
@@ -116,20 +117,21 @@ class DatabaseSeeder extends Seeder
         ]);
         $admin->assignRole('admin');
 
-        // Create demo accountant office and user
+        // Create demo office and user
         $demoOffice = Office::create([
             'name' => 'Escritório Demo',
             'cnpj' => '12.345.678/0001-00',
             'email' => 'demo@inovai.com.br',
+            'type' => 'contador',
         ]);
 
-        $accountant = User::create([
+        $officeUser = User::create([
             'name' => 'Contador Demo',
             'email' => 'contador@inovai.com.br',
             'password' => Hash::make('password'),
             'office_id' => $demoOffice->id,
         ]);
-        $accountant->assignRole('accountant');
+        $officeUser->assignRole('office_user');
 
         // Create demo subscription
         \App\Models\Subscription::create([

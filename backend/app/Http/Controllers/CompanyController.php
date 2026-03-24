@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -151,6 +152,59 @@ class CompanyController extends Controller
             'message' => 'Certificado enviado com sucesso.',
             'validade' => $validade,
         ]);
+    }
+
+    /**
+     * List users attached to a company
+     */
+    public function users(Request $request, Company $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company);
+
+        $users = $company->users()->with('roles')->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Attach a user to a company
+     */
+    public function attachUser(Request $request, Company $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company);
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+        ]);
+
+        $user = User::findOrFail($validated['user_id']);
+
+        // Check if user belongs to same office (for office_user)
+        if (!$request->user()->hasRole('admin') && $user->office_id !== $request->user()->office_id) {
+            return response()->json(['message' => 'Usuário não pertence ao seu escritório.'], 403);
+        }
+
+        // Attach user to company
+        $company->users()->syncWithoutDetaching([$user->id]);
+
+        // Assign company_user role if not already has it
+        if (!$user->hasRole('company_user')) {
+            $user->assignRole('company_user');
+        }
+
+        return response()->json(['message' => 'Usuário vinculado à empresa.']);
+    }
+
+    /**
+     * Detach a user from a company
+     */
+    public function detachUser(Request $request, Company $company, User $user): JsonResponse
+    {
+        $this->authorizeCompany($request, $company);
+
+        $company->users()->detach($user->id);
+
+        return response()->json(['message' => 'Usuário desvinculado da empresa.']);
     }
 
     private function authorizeCompany(Request $request, Company $company): void

@@ -1,6 +1,7 @@
 import type { Company } from '~/types'
 
 const currentCompany = ref<Company | null>(null)
+const initialized = ref(false)
 
 export function useCurrentCompany() {
   const setCompany = (company: Company | null) => {
@@ -20,9 +21,29 @@ export function useCurrentCompany() {
     return id ? Number(id) : null
   }
 
+  const initializeFromCompanies = (companies: Company[]) => {
+    if (initialized.value || companies.length === 0) return
+
+    const storedId = getStoredCompanyId()
+    const storedCompany = storedId ? companies.find(c => c.id === storedId) : null
+
+    if (storedCompany) {
+      currentCompany.value = storedCompany
+    } else if (companies.length === 1) {
+      const singleCompany = companies[0]
+      currentCompany.value = singleCompany
+      if (import.meta.client && singleCompany) {
+        localStorage.setItem('current_company_id', String(singleCompany.id))
+      }
+    }
+
+    initialized.value = true
+  }
+
   return {
     currentCompany: readonly(currentCompany),
     setCompany,
-    getStoredCompanyId
+    getStoredCompanyId,
+    initializeFromCompanies
   }
 }

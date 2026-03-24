@@ -31,6 +31,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Companies (scoped by office)
     Route::apiResource('companies', CompanyController::class);
     Route::post('companies/{company}/certificado', [CompanyController::class, 'uploadCertificado']);
+    Route::get('companies/{company}/users', [CompanyController::class, 'users']);
+    Route::post('companies/{company}/users', [CompanyController::class, 'attachUser']);
+    Route::delete('companies/{company}/users/{user}', [CompanyController::class, 'detachUser']);
 
     // Dashboard
     Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);

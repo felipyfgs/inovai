@@ -8,7 +8,7 @@ defineProps<{
 
 const router = useRouter()
 const { user } = useSanctumAuth<AuthUser>()
-const { currentCompany, setCompany } = useCurrentCompany()
+const { currentCompany, setCompany, initializeFromCompanies } = useCurrentCompany()
 
 const { data: companiesData } = useApi<PaginatedResponse<Company>>('/companies', {
   lazy: true,
@@ -16,6 +16,12 @@ const { data: companiesData } = useApi<PaginatedResponse<Company>>('/companies',
 })
 
 const companies = computed<Company[]>(() => companiesData.value?.data ?? [])
+
+watch(companies, (list) => {
+  if (list.length > 0) {
+    initializeFromCompanies(list)
+  }
+}, { immediate: true })
 
 const maxCompanies = computed(() => user.value?.office?.subscription?.plan?.max_companies ?? null)
 

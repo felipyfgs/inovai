@@ -19,20 +19,25 @@ class ResolveTenant
 
         $companyId = $request->header('X-Company-Id');
 
+        // If no company header, try to auto-select single company
+        if (!$companyId && !$user->hasRole('admin')) {
+            $companyId = $this->getAutoSelectedCompanyId($user);
+        }
+
         if ($companyId) {
             $cacheKey = "tenant:{$user->id}:{$companyId}";
-            
+
             $company = Cache::remember($cacheKey, 300, function () use ($user, $companyId) {
                 if ($user->hasRole('admin')) {
                     return \App\Models\Company::find($companyId);
                 }
-                
-                if ($user->hasRole('accountant')) {
+
+                if ($user->hasRole('office_user')) {
                     return \App\Models\Company::where('id', $companyId)
                         ->where('office_id', $user->office_id)
                         ->first();
                 }
-                
+
                 return $user->companies()->where('companies.id', $companyId)->first();
             });
 
@@ -49,5 +54,29 @@ class ResolveTenant
         }
 
         return $next($request);
+    }
+
+    /**
+     * Auto-select company if user has only one
+     */
+    private function getAutoSelectedCompanyId($user): ?int
+    {
+        // For office_user, check companies in their office
+        if ($user->hasRole('office_user')) {
+            $companiesCount = \App\Models\Company::where('office_id', $user->office_id)->count();
+            if ($companiesCount === 1) {
+                return \App\Models\Company::where('office_id', $user->office_id)->value('id');
+            }
+        }
+
+        // For company_user, check their attached companies
+        if ($user->hasRole('company_user')) {
+            $companiesCount = $user->companies()->count();
+            if ($companiesCount === 1) {
+                return $user->companies()->first()->id;
+            }
+        }
+
+        return null;
     }
 }
