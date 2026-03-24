@@ -1,5 +1,22 @@
 <script setup lang="ts">
+import type { AuthUser, Company } from '~/types'
+
 const colorMode = useColorMode()
+const { user } = useSanctumAuth<AuthUser>()
+const { getStoredCompanyId, setCompany } = useCurrentCompany()
+const { $sanctumClient } = useNuxtApp()
+
+onMounted(async () => {
+  const storedId = getStoredCompanyId()
+  if (!storedId || !user.value) return
+
+  try {
+    const company = await $sanctumClient<Company>(`/api/companies/${storedId}`)
+    setCompany(company)
+  } catch {
+    setCompany(null)
+  }
+})
 
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
 

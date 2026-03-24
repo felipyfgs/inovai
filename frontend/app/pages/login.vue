@@ -21,10 +21,11 @@ async function handleLogin() {
       password: form.password
     })
     router.push('/')
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string } } }
     toast.add({
       title: 'Erro ao entrar',
-      description: e?.response?._data?.message || 'Credenciais inválidas.',
+      description: err?.response?._data?.message || 'Credenciais inválidas.',
       color: 'error'
     })
   } finally {

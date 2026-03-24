@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import type { AuthUser } from '~/types'
 
 const route = useRoute()
 const toast = useToast()
+const { user } = useSanctumAuth<AuthUser>()
+
+const isAdmin = computed(() => user.value?.roles?.some(r => r.name === 'admin') ?? false)
 
 const open = ref(false)
 
-const links = [[{
+const baseLinks = [{
   label: 'Home',
   icon: 'i-lucide-house',
   to: '/',
@@ -143,7 +147,41 @@ const links = [[{
       open.value = false
     }
   }]
-}], [{
+}]
+
+const adminLinks = [{
+  label: 'Admin',
+  icon: 'i-lucide-shield',
+  type: 'trigger' as const,
+  children: [{
+    label: 'Dashboard Admin',
+    to: '/admin',
+    exact: true,
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Contadores & Clientes',
+    to: '/admin/contadores',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Cobranças',
+    to: '/admin/cobrancas',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Mapa de Empresas',
+    to: '/admin/mapa',
+    onSelect: () => {
+      open.value = false
+    }
+  }]
+}]
+
+const bottomLinks = [{
   label: 'Feedback',
   icon: 'i-lucide-message-circle',
   to: 'https://github.com/nuxt-ui-templates/dashboard',
@@ -153,12 +191,17 @@ const links = [[{
   icon: 'i-lucide-info',
   to: 'https://github.com/nuxt-ui-templates/dashboard',
   target: '_blank'
-}]] satisfies NavigationMenuItem[][]
+}]
+
+const links = computed<NavigationMenuItem[][]>(() => [
+  [...baseLinks, ...(isAdmin.value ? adminLinks : [])],
+  bottomLinks
+])
 
 const groups = computed(() => [{
   id: 'links',
   label: 'Go to',
-  items: links.flat()
+  items: links.value.flat()
 }, {
   id: 'code',
   label: 'Code',

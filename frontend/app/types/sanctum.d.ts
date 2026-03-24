@@ -1,6 +1,6 @@
 declare module '#app' {
   interface NuxtApp {
-    $sanctumClient: <T = any>(url: string, options?: any) => Promise<T>
+    $sanctumClient: <T = unknown>(url: string, options?: Record<string, unknown>) => Promise<T>
   }
 }
 

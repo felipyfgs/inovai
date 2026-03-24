@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Office;
+use App\Models\Plan;
+use App\Models\Subscription;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class OfficeController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $query = Office::with(['subscription.plan', 'companies'])
+            ->withCount('companies')
+            ->where('type', '!=', 'admin');
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'ilike', "%{$request->search}%")
+                    ->orWhere('cnpj', 'like', "%{$request->search}%")
+                    ->orWhere('email', 'ilike', "%{$request->search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        $offices = $query->orderBy('name')->paginate($request->get('per_page', 15));
+
+        return response()->json($offices);
+    }
+
+    public function show(Office $office): JsonResponse
+    {
+        $office->load([
+            'subscription.plan',
+            'subscriptions.plan',
+            'companies',
+            'users',
+            'invoices' => fn ($q) => $q->latest()->limit(10),
+            'parentOffice',
+        ])->loadCount(['companies', 'users']);
+
+        return response()->json($office);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'cnpj' => 'required|string|max:18|unique:offices,cnpj',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'type' => 'required|in:contador,direct',
+            'is_reseller' => 'boolean',
+            'reseller_commission' => 'numeric|min:0|max:100',
+            'parent_office_id' => 'nullable|exists:offices,id',
+            'notes' => 'nullable|string',
+            'plan_id' => 'nullable|exists:plans,id',
+        ]);
+
+        $office = Office::create($validated);
+
+        if (!empty($validated['plan_id'])) {
+            $plan = Plan::findOrFail($validated['plan_id']);
+            $office->subscriptions()->create([
+                'plan_id' => $plan->id,
+                'status' => 'active',
+                'starts_at' => now(),
+            ]);
+        }
+
+        return response()->json($office->load('subscription.plan'), 201);
+    }
+
+    public function update(Request $request, Office $office): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'cnpj' => "sometimes|string|max:18|unique:offices,cnpj,{$office->id}",
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'type' => 'sometimes|in:contador,direct',
+            'is_active' => 'boolean',
+            'is_reseller' => 'boolean',
+            'reseller_commission' => 'numeric|min:0|max:100',
+            'parent_office_id' => 'nullable|exists:offices,id',
+            'notes' => 'nullable|string',
+        ]);
+
+        $office->update($validated);
+
+        return response()->json($office->load('subscription.plan'));
+    }
+
+    public function destroy(Office $office): JsonResponse
+    {
+        if ($office->companies()->exists()) {
+            return response()->json(['message' => 'Não é possível excluir um escritório com empresas vinculadas.'], 422);
+        }
+
+        $office->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function assignPlan(Request $request, Office $office): JsonResponse
+    {
+        $validated = $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after:starts_at',
+        ]);
+
+        $office->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
+
+        $subscription = $office->subscriptions()->create([
+            'plan_id' => $validated['plan_id'],
+            'status' => 'active',
+            'starts_at' => $validated['starts_at'] ?? now(),
+            'ends_at' => $validated['ends_at'] ?? null,
+        ]);
+
+        return response()->json($subscription->load('plan'));
+    }
+
+    public function map(): JsonResponse
+    {
+        $contadores = Office::with(['companies' => fn ($q) => $q->select('id', 'office_id', 'razao_social', 'fantasia', 'cnpj', 'ambiente', 'is_active'), 'subscription.plan'])
+            ->withCount('companies')
+            ->where('type', 'contador')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $diretas = Office::with(['companies' => fn ($q) => $q->select('id', 'office_id', 'razao_social', 'fantasia', 'cnpj', 'ambiente', 'is_active'), 'subscription.plan'])
+            ->withCount('companies')
+            ->where('type', 'direct')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'contadores' => $contadores,
+            'diretas' => $diretas,
+            'totals' => [
+                'contadores' => $contadores->count(),
+                'direct' => $diretas->count(),
+                'companies' => $contadores->sum('companies_count') + $diretas->sum('companies_count'),
+            ],
+        ]);
+    }
+}

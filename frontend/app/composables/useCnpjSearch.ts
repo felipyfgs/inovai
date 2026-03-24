@@ -19,7 +19,7 @@ export interface CnpjData {
 
 interface CnpjApiResponse {
   razao_social: string
-  porte: { id: string; descricao: string }
+  porte: { id: string, descricao: string }
   estabelecimento: {
     cnpj: string
     nome_fantasia: string | null
@@ -32,7 +32,7 @@ interface CnpjApiResponse {
     ddd1: string | null
     telefone1: string | null
     email: string | null
-    cidade: { nome: string; ibge_id: number } | null
+    cidade: { nome: string, ibge_id: number } | null
     estado: { sigla: string } | null
     inscricoes_estaduais: Array<{
       inscricao_estadual: string
@@ -98,10 +98,11 @@ export function useCnpjSearch() {
         telefone: fullTelefone,
         email: response.estabelecimento.email || ''
       }
-    } catch (e: any) {
-      if (e.statusCode === 429) {
+    } catch (e: unknown) {
+      const err = e as { statusCode?: number }
+      if (err.statusCode === 429) {
         error.value = 'Limite de consultas excedido. Aguarde 1 minuto.'
-      } else if (e.statusCode === 404) {
+      } else if (err.statusCode === 404) {
         error.value = 'CNPJ não encontrado.'
       } else {
         error.value = 'Erro ao buscar CNPJ. Tente novamente.'

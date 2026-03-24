@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: 'auth'
+  layout: 'auth',
+  sanctum: { guestOnly: true }
 })
 
 const config = useRuntimeConfig()
@@ -31,11 +32,12 @@ async function handleRegister() {
       description: 'Faça login para continuar.'
     })
     router.push('/login')
-  } catch (e: any) {
-    const errors = e?.response?._data?.errors
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string, errors?: Record<string, string[]> } } }
+    const errors = err?.response?._data?.errors
     const message = errors
       ? Object.values(errors).flat().join(' ')
-      : e?.response?._data?.message || 'Erro ao cadastrar.'
+      : err?.response?._data?.message || 'Erro ao cadastrar.'
     toast.add({
       title: 'Erro ao cadastrar',
       description: message,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { FormSubmitEvent, TabsItem } from '@nuxt/ui'
+import type { FormSubmitEvent } from '@nuxt/ui'
 
 const emit = defineEmits<{ created: [] }>()
 
@@ -56,39 +56,15 @@ const state = reactive<Partial<Schema>>({
 })
 
 const ufItems = [
-  { label: 'Acre', value: 'AC' },
-  { label: 'Alagoas', value: 'AL' },
-  { label: 'Amapá', value: 'AP' },
-  { label: 'Amazonas', value: 'AM' },
-  { label: 'Bahia', value: 'BA' },
-  { label: 'Ceará', value: 'CE' },
-  { label: 'Distrito Federal', value: 'DF' },
-  { label: 'Espírito Santo', value: 'ES' },
-  { label: 'Goiás', value: 'GO' },
-  { label: 'Maranhão', value: 'MA' },
-  { label: 'Mato Grosso', value: 'MT' },
-  { label: 'Mato Grosso do Sul', value: 'MS' },
-  { label: 'Minas Gerais', value: 'MG' },
-  { label: 'Pará', value: 'PA' },
-  { label: 'Paraíba', value: 'PB' },
-  { label: 'Paraná', value: 'PR' },
-  { label: 'Pernambuco', value: 'PE' },
-  { label: 'Piauí', value: 'PI' },
-  { label: 'Rio de Janeiro', value: 'RJ' },
-  { label: 'Rio Grande do Norte', value: 'RN' },
-  { label: 'Rio Grande do Sul', value: 'RS' },
-  { label: 'Rondônia', value: 'RO' },
-  { label: 'Roraima', value: 'RR' },
-  { label: 'Santa Catarina', value: 'SC' },
-  { label: 'São Paulo', value: 'SP' },
-  { label: 'Sergipe', value: 'SE' },
-  { label: 'Tocantins', value: 'TO' }
-]
-
-const tabItems: TabsItem[] = [
-  { label: 'Cadastrais', icon: 'i-lucide-building-2', slot: 'cadastrais' },
-  { label: 'Endereço', icon: 'i-lucide-map-pin', slot: 'endereco' },
-  { label: 'Contato', icon: 'i-lucide-phone', slot: 'contato' }
+  { label: 'AC', value: 'AC' }, { label: 'AL', value: 'AL' }, { label: 'AP', value: 'AP' },
+  { label: 'AM', value: 'AM' }, { label: 'BA', value: 'BA' }, { label: 'CE', value: 'CE' },
+  { label: 'DF', value: 'DF' }, { label: 'ES', value: 'ES' }, { label: 'GO', value: 'GO' },
+  { label: 'MA', value: 'MA' }, { label: 'MT', value: 'MT' }, { label: 'MS', value: 'MS' },
+  { label: 'MG', value: 'MG' }, { label: 'PA', value: 'PA' }, { label: 'PB', value: 'PB' },
+  { label: 'PR', value: 'PR' }, { label: 'PE', value: 'PE' }, { label: 'PI', value: 'PI' },
+  { label: 'RJ', value: 'RJ' }, { label: 'RN', value: 'RN' }, { label: 'RS', value: 'RS' },
+  { label: 'RO', value: 'RO' }, { label: 'RR', value: 'RR' }, { label: 'SC', value: 'SC' },
+  { label: 'SP', value: 'SP' }, { label: 'SE', value: 'SE' }, { label: 'TO', value: 'TO' }
 ]
 
 function resetForm() {
@@ -105,24 +81,14 @@ async function handleSearchCnpj() {
     toast.add({ title: 'CNPJ inválido', description: 'Digite 14 dígitos', color: 'error' })
     return
   }
-
   const data = await searchCnpj(state.cnpj!)
   if (data) {
-    state.razao_social = data.razao_social
-    state.fantasia = data.fantasia
-    state.ie = data.ie
-    state.crt = data.crt
-    state.logradouro = data.logradouro
-    state.numero = data.numero
-    state.complemento = data.complemento
-    state.bairro = data.bairro
-    state.municipio = data.municipio
-    state.municipio_ibge = data.municipio_ibge
-    state.uf = data.uf
-    state.cep = data.cep
-    state.telefone = data.telefone
-    state.email = data.email
-
+    Object.assign(state, {
+      razao_social: data.razao_social, fantasia: data.fantasia, ie: data.ie, crt: data.crt,
+      logradouro: data.logradouro, numero: data.numero, complemento: data.complemento,
+      bairro: data.bairro, municipio: data.municipio, municipio_ibge: data.municipio_ibge,
+      uf: data.uf, cep: data.cep, telefone: data.telefone, email: data.email
+    })
     toast.add({ title: 'CNPJ encontrado', description: data.razao_social, color: 'success' })
   } else if (cnpjError.value) {
     toast.add({ title: 'Erro', description: cnpjError.value, color: 'error' })
@@ -132,14 +98,12 @@ async function handleSearchCnpj() {
 async function handleSearchCep() {
   const cleanCep = state.cep?.replace(/\D/g, '') || ''
   if (cleanCep.length !== 8) return
-
   const data = await searchCep(state.cep!)
   if (data) {
-    state.logradouro = data.logradouro
-    state.bairro = data.bairro
-    state.municipio = data.municipio
-    state.municipio_ibge = data.municipio_ibge
-    state.uf = data.uf
+    Object.assign(state, {
+      logradouro: data.logradouro, bairro: data.bairro,
+      municipio: data.municipio, municipio_ibge: data.municipio_ibge, uf: data.uf
+    })
   } else if (cepError.value) {
     toast.add({ title: 'Erro', description: cepError.value, color: 'error' })
   }
@@ -153,16 +117,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     open.value = false
     resetForm()
     emit('created')
-  } catch (error: any) {
-    const msg = error?.response?._data?.message || error?.message || 'Erro ao criar empresa.'
+  } catch (error: unknown) {
+    const err = error as { response?: { _data?: { message?: string } }, message?: string }
+    const msg = err?.response?._data?.message || err?.message || 'Erro ao criar empresa.'
     toast.add({ title: 'Erro', description: msg, color: 'error' })
   } finally {
     loading.value = false
   }
-}
-
-function handleSubmit() {
-  formRef.value?.submit()
 }
 </script>
 
@@ -170,9 +131,7 @@ function handleSubmit() {
   <UModal
     v-model:open="open"
     title="Nova Empresa"
-    description="Adicionar uma nova empresa ao escritório"
-    :ui="{ content: 'w-full sm:max-w-4xl' }"
-    scrollable
+    :ui="{ content: 'w-full sm:max-w-4xl mt-4', body: 'max-h-[75vh] overflow-y-auto', footer: 'justify-end shrink-0' }"
   >
     <UButton label="Nova Empresa" icon="i-lucide-plus" />
 
@@ -181,139 +140,149 @@ function handleSubmit() {
         ref="formRef"
         :schema="schema"
         :state="state"
-        class="space-y-4"
+        class="space-y-6 p-1"
         @submit="onSubmit"
       >
-        <UTabs :items="tabItems" class="w-full">
-          <template #cadastrais>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-              <UFormField
-                label="Razão Social"
-                name="razao_social"
-                required
-                class="sm:col-span-2"
-              >
-                <UInput v-model="state.razao_social" class="w-full" placeholder="Razão Social da empresa" />
-              </UFormField>
-              <UFormField label="Nome Fantasia" name="fantasia">
-                <UInput v-model="state.fantasia" class="w-full" placeholder="Nome comercial" />
-              </UFormField>
-              <UFormField label="CNPJ" name="cnpj" required>
-                <UInput v-model="state.cnpj" class="w-full" placeholder="00.000.000/0001-00">
-                  <template #trailing>
-                    <UButton
-                      v-if="!cnpjLoading"
-                      variant="link"
-                      icon="i-lucide-search"
-                      color="neutral"
-                      @click="handleSearchCnpj"
-                    />
-                    <UIcon v-else name="i-lucide-loader-2" class="animate-spin text-muted" />
-                  </template>
-                </UInput>
-              </UFormField>
-              <UFormField label="Inscrição Estadual" name="ie">
-                <UInput v-model="state.ie" class="w-full" placeholder="IE" />
-              </UFormField>
-              <UFormField label="Inscrição Municipal" name="im">
-                <UInput v-model="state.im" class="w-full" placeholder="IM" />
-              </UFormField>
-              <UFormField label="CRT (Regime Tributário)" name="crt">
-                <USelect
-                  v-model="state.crt"
-                  :items="[
-                    { label: '1 - Simples Nacional', value: 1 },
-                    { label: '2 - Simples Nacional (excesso)', value: 2 },
-                    { label: '3 - Regime Normal', value: 3 }
-                  ]"
-                  class="w-full"
-                  placeholder="Selecione o regime"
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <UFormField
+            label="CNPJ"
+            name="cnpj"
+            required
+            class="sm:col-span-2"
+          >
+            <UInput v-model="state.cnpj" placeholder="00.000.000/0001-00" class="w-full">
+              <template #trailing>
+                <UButton
+                  v-if="!cnpjLoading"
+                  variant="link"
+                  icon="i-lucide-search"
+                  color="neutral"
+                  size="xs"
+                  @click="handleSearchCnpj"
                 />
-              </UFormField>
-              <UFormField label="Ambiente de Emissão" name="ambiente">
-                <USelect
-                  v-model="state.ambiente"
-                  :items="[
-                    { label: 'Homologação (Testes)', value: 'homologacao' },
-                    { label: 'Produção (Real)', value: 'producao' }
-                  ]"
-                  class="w-full"
-                  placeholder="Selecione o ambiente"
-                />
-              </UFormField>
-            </div>
-          </template>
+                <UIcon v-else name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
+              </template>
+            </UInput>
+          </UFormField>
 
-          <template #endereco>
-            <div class="grid grid-cols-1 sm:grid-cols-6 gap-4 pt-4">
-              <UFormField label="CEP" name="cep" class="sm:col-span-2">
-                <UInput v-model="state.cep" class="w-full" placeholder="00000-000" @blur="handleSearchCep">
-                  <template #trailing>
-                    <UIcon v-if="cepLoading" name="i-lucide-loader-2" class="animate-spin text-muted" />
-                  </template>
-                </UInput>
-              </UFormField>
-              <UFormField label="UF" name="uf" class="sm:col-span-2">
-                <USelect
-                  v-model="state.uf"
-                  :items="ufItems"
-                  class="w-full"
-                  placeholder="Selecione"
-                />
-              </UFormField>
-              <UFormField label="Município" name="municipio" class="sm:col-span-2">
-                <UInput v-model="state.municipio" class="w-full" placeholder="Cidade" />
-              </UFormField>
-              <UFormField label="Logradouro" name="logradouro" class="sm:col-span-4">
-                <UInput v-model="state.logradouro" class="w-full" placeholder="Rua, Avenida, etc." />
-              </UFormField>
-              <UFormField label="Número" name="numero" class="sm:col-span-2">
-                <UInput v-model="state.numero" class="w-full" placeholder="Nº" />
-              </UFormField>
-              <UFormField label="Complemento" name="complemento" class="sm:col-span-2">
-                <UInput v-model="state.complemento" class="w-full" placeholder="Apto, Sala, etc." />
-              </UFormField>
-              <UFormField label="Bairro" name="bairro" class="sm:col-span-2">
-                <UInput v-model="state.bairro" class="w-full" placeholder="Bairro" />
-              </UFormField>
-              <UFormField label="Código IBGE" name="municipio_ibge" class="sm:col-span-2">
-                <UInput v-model="state.municipio_ibge" class="w-full" placeholder="IBGE" disabled />
-              </UFormField>
-            </div>
-          </template>
+          <UFormField
+            label="Razão Social"
+            name="razao_social"
+            required
+            class="sm:col-span-2"
+          >
+            <UInput v-model="state.razao_social" placeholder="Nome empresarial" class="w-full" />
+          </UFormField>
 
-          <template #contato>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-              <UFormField label="Telefone" name="telefone">
-                <UInput v-model="state.telefone" class="w-full" placeholder="(00) 00000-0000" />
-              </UFormField>
-              <UFormField label="E-mail" name="email">
-                <UInput
-                  v-model="state.email"
-                  class="w-full"
-                  type="email"
-                  placeholder="email@empresa.com.br"
-                />
-              </UFormField>
-            </div>
-          </template>
-        </UTabs>
+          <UFormField label="Nome Fantasia" name="fantasia">
+            <UInput v-model="state.fantasia" placeholder="Nome comercial" class="w-full" />
+          </UFormField>
 
-        <div class="flex justify-end gap-2 pt-4">
-          <UButton
-            label="Cancelar"
-            color="neutral"
-            variant="outline"
-            @click="open = false"
-          />
-          <UButton
-            label="Criar Empresa"
-            color="primary"
-            :loading="loading"
-            @click="handleSubmit"
-          />
+          <UFormField label="Inscrição Estadual" name="ie">
+            <UInput v-model="state.ie" placeholder="IE" class="w-full" />
+          </UFormField>
+          <UFormField label="Inscrição Municipal" name="im">
+            <UInput v-model="state.im" placeholder="IM" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Regime Tributário" name="crt">
+            <USelect
+              v-model="state.crt"
+              class="w-full"
+              :items="[
+                { label: 'Simples Nacional', value: 1 },
+                { label: 'Simples Nacional (excesso)', value: 2 },
+                { label: 'Regime Normal', value: 3 }
+              ]"
+              placeholder="Selecione o regime"
+            />
+          </UFormField>
+          <UFormField label="Ambiente de Emissão" name="ambiente">
+            <USelect
+              v-model="state.ambiente"
+              class="w-full"
+              :items="[
+                { label: 'Homologação', value: 'homologacao' },
+                { label: 'Produção', value: 'producao' }
+              ]"
+              placeholder="Selecione o ambiente"
+            />
+          </UFormField>
+        </div>
+
+        <USeparator label="Endereço" />
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <UFormField label="CEP" name="cep" class="sm:col-span-1">
+            <UInput
+              v-model="state.cep"
+              placeholder="00000-000"
+              class="w-full"
+              @blur="handleSearchCep"
+            >
+              <template #trailing>
+                <UIcon v-if="cepLoading" name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
+              </template>
+            </UInput>
+          </UFormField>
+          <UFormField label="UF" name="uf" class="sm:col-span-1">
+            <USelect
+              v-model="state.uf"
+              :items="ufItems"
+              placeholder="UF"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Município" name="municipio" class="col-span-2">
+            <UInput v-model="state.municipio" placeholder="Cidade" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Logradouro" name="logradouro" class="col-span-2 sm:col-span-3">
+            <UInput v-model="state.logradouro" placeholder="Rua, Avenida, etc." class="w-full" />
+          </UFormField>
+          <UFormField label="Número" name="numero">
+            <UInput v-model="state.numero" placeholder="Nº" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Bairro" name="bairro" class="col-span-2">
+            <UInput v-model="state.bairro" placeholder="Bairro" class="w-full" />
+          </UFormField>
+          <UFormField label="Complemento" name="complemento" class="col-span-2">
+            <UInput v-model="state.complemento" placeholder="Apto, Sala, Bloco, etc." class="w-full" />
+          </UFormField>
+        </div>
+
+        <USeparator label="Contato" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <UFormField label="Telefone" name="telefone">
+            <UInput v-model="state.telefone" placeholder="(00) 00000-0000" class="w-full" />
+          </UFormField>
+          <UFormField label="E-mail" name="email">
+            <UInput
+              v-model="state.email"
+              type="email"
+              placeholder="email@empresa.com.br"
+              class="w-full"
+            />
+          </UFormField>
         </div>
       </UForm>
+    </template>
+
+    <template #footer="{ close }">
+      <UButton
+        label="Cancelar"
+        color="neutral"
+        variant="outline"
+        @click="close"
+      />
+      <UButton
+        label="Criar Empresa"
+        color="primary"
+        :loading="loading"
+        @click="formRef?.submit()"
+      />
     </template>
   </UModal>
 </template>

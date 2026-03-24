@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -14,12 +15,19 @@ class Office extends Model
         'phone',
         'email',
         'is_active',
+        'type',
+        'is_reseller',
+        'reseller_commission',
+        'parent_office_id',
+        'notes',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'is_reseller' => 'boolean',
+            'reseller_commission' => 'decimal:2',
         ];
     }
 
@@ -41,5 +49,30 @@ class Office extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function parentOffice(): BelongsTo
+    {
+        return $this->belongsTo(Office::class, 'parent_office_id');
+    }
+
+    public function childOffices(): HasMany
+    {
+        return $this->hasMany(Office::class, 'parent_office_id');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->type === 'admin';
+    }
+
+    public function isContador(): bool
+    {
+        return $this->type === 'contador';
     }
 }

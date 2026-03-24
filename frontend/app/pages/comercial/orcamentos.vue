@@ -31,8 +31,9 @@ async function convertToPedido(orcamento: Orcamento) {
     await apiPost(`/orcamentos/${orcamento.id}/converter`)
     toast.add({ title: 'Convertido', description: `Orçamento #${orcamento.numero} convertido em pedido.`, color: 'success' })
     refresh()
-  } catch (e: any) {
-    toast.add({ title: 'Erro', description: e?.response?._data?.message || 'Erro ao converter.', color: 'error' })
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string } } }
+    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao converter.', color: 'error' })
   }
 }
 

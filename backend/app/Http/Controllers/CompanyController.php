@@ -14,10 +14,13 @@ class CompanyController extends Controller
 
         if ($user->hasRole('admin')) {
             $companies = Company::with('office')->paginate(20);
+        } elseif ($user->hasRole('company_user')) {
+            $companies = $user->companies()->with('office')
+                ->paginate($request->get('per_page', 200));
         } else {
             $companies = Company::with('office')
                 ->where('office_id', $user->office_id)
-                ->paginate(20);
+                ->paginate($request->get('per_page', 200));
         }
 
         return response()->json($companies);
@@ -45,7 +48,22 @@ class CompanyController extends Controller
             'ambiente' => ['nullable', 'string', 'in:homologacao,producao'],
         ]);
 
-        $validated['office_id'] = $request->user()->office_id;
+        $user = $request->user();
+        $validated['office_id'] = $user->office_id;
+
+        if (!$user->hasRole('admin')) {
+            $office = $user->office()->with('subscription.plan')->first();
+            $maxCompanies = $office?->subscription?->plan?->max_companies;
+
+            if ($maxCompanies !== null) {
+                $currentCount = Company::where('office_id', $user->office_id)->count();
+                if ($currentCount >= $maxCompanies) {
+                    return response()->json([
+                        'message' => "Limite de {$maxCompanies} empresa(s) atingido para o seu plano."
+                    ], 422);
+                }
+            }
+        }
 
         $company = Company::create($validated);
 

@@ -1,25 +1,55 @@
-import type { UseFetchOptions } from 'nuxt/app'
+import { isRef } from 'vue'
+import type { AsyncDataOptions } from 'nuxt/app'
 
-export function useApi<T>(url: string | Ref<string>, options: UseFetchOptions<T> = {}) {
+type ApiOptions = {
+  lazy?: boolean
+  server?: boolean
+  query?: Record<string, unknown> | Ref<Record<string, unknown>>
+  headers?: Record<string, string>
+  watch?: Ref[]
+}
+
+export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
   const { currentCompany } = useCurrentCompany()
   const { $sanctumClient } = useNuxtApp()
 
-  const headers: Record<string, string> = {}
-  if (currentCompany.value?.id) {
-    headers['X-Company-Id'] = String(currentCompany.value.id)
+  const { lazy, server, query, headers: extraHeaders, watch: watchOption } = options
+
+  const getHeaders = (): Record<string, string> => {
+    const h: Record<string, string> = {}
+    if (currentCompany.value?.id) {
+      h['X-Company-Id'] = String(currentCompany.value.id)
+    }
+    return h
   }
 
-  const apiUrl = typeof url === 'string' ? `/api${url}` : computed(() => `/api${url.value}`)
+  const watchSources: Ref[] = []
+  if (isRef(query)) watchSources.push(query as Ref)
+  if (isRef(url)) watchSources.push(url as Ref)
+  if (watchOption?.length) watchSources.push(...watchOption)
 
-  return useAsyncData(
-    typeof url === 'string' ? url : url.value,
-    () => $sanctumClient<T>(apiUrl, {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers
-      }
-    })
+  const asyncDataOptions: AsyncDataOptions<T> = {
+    lazy: lazy ?? false,
+    server: server ?? true,
+    watch: watchSources.length ? watchSources : undefined
+  }
+
+  const resolvedUrl = typeof url === 'string' ? url : url.value
+
+  return useAsyncData<T>(
+    resolvedUrl,
+    () => {
+      const resolvedQuery = query ? (isRef(query) ? query.value : query) : undefined
+      const currentUrl = typeof url === 'string' ? url : url.value
+      return $sanctumClient<T>(`/api${currentUrl}`, {
+        query: resolvedQuery,
+        headers: {
+          ...getHeaders(),
+          ...extraHeaders
+        }
+      })
+    },
+    asyncDataOptions
   )
 }
 
@@ -35,18 +65,18 @@ export function useApiMutation() {
     return headers
   }
 
-  async function mutate<T = any>(url: string, options: { method?: string, body?: any } = {}): Promise<T> {
+  async function mutate<T = unknown>(url: string, options: { method?: string, body?: unknown } = {}): Promise<T> {
     return await $sanctumClient<T>(`/api${url}`, {
-      method: (options.method || 'POST') as any,
+      method: (options.method || 'POST') as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
       body: options.body,
       headers: getHeaders()
     }) as Promise<T>
   }
 
-  const post = <T = any>(url: string, body?: any) => mutate<T>(url, { method: 'POST', body })
-  const put = <T = any>(url: string, body?: any) => mutate<T>(url, { method: 'PUT', body })
-  const patch = <T = any>(url: string, body?: any) => mutate<T>(url, { method: 'PATCH', body })
-  const del = <T = any>(url: string) => mutate<T>(url) => mutate<T>(url, { method: 'DELETE' })
+  const post = <T = unknown>(url: string, body?: unknown) => mutate<T>(url, { method: 'POST', body })
+  const put = <T = unknown>(url: string, body?: unknown) => mutate<T>(url, { method: 'PUT', body })
+  const patch = <T = unknown>(url: string, body?: unknown) => mutate<T>(url, { method: 'PATCH', body })
+  const del = <T = unknown>(url: string) => mutate<T>(url, { method: 'DELETE' })
 
   return { mutate, post, put, patch, del }
 }

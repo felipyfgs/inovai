@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import { upperFirst } from 'scule'
 import { getPaginationRowModel } from '@tanstack/table-core'
+import type { Row } from '@tanstack/table-core'
 import type { Company, PaginatedResponse } from '~/types'
 
-import { UButton, UBadge, UDropdownMenu } from '#components'
+import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
 const toast = useToast()
 const table = useTemplateRef('table')
-const { currentCompany, setCompany } = useCurrentCompany()
+const { setCompany } = useCurrentCompany()
+
+const columnFilters = ref([{
+  id: 'razao_social',
+  value: ''
+}])
+const columnVisibility = ref()
+const rowSelection = ref({})
 
 const { data, status, refresh } = useApi<PaginatedResponse<Company>>('/companies', {
   lazy: true
@@ -18,7 +27,7 @@ const companies = computed(() => data.value?.data || [])
 const editingCompany = ref<Company | null>(null)
 const deletingCompany = ref<Company | null>(null)
 
-function getRowItems(row: any) {
+function getRowItems(row: Row<Company>) {
   return [
     {
       type: 'label' as const,
@@ -71,6 +80,24 @@ function getRowItems(row: any) {
 }
 
 const columns: TableColumn<Company>[] = [
+  {
+    id: 'select',
+    header: ({ table }) =>
+      h(UCheckbox, {
+        'modelValue': table.getIsSomePageRowsSelected()
+          ? 'indeterminate'
+          : table.getIsAllPageRowsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!value),
+        'ariaLabel': 'Selecionar todos'
+      }),
+    cell: ({ row }) =>
+      h(UCheckbox, {
+        'modelValue': row.getIsSelected(),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
+        'ariaLabel': 'Selecionar linha'
+      })
+  },
   {
     accessorKey: 'id',
     header: 'ID'
@@ -156,6 +183,15 @@ watch(() => ambienteFilter.value, (newVal) => {
   col.setFilterValue(newVal === 'all' ? undefined : newVal)
 })
 
+const search = computed({
+  get: (): string => {
+    return (table.value?.tableApi?.getColumn('razao_social')?.getFilterValue() as string) || ''
+  },
+  set: (value: string) => {
+    table.value?.tableApi?.getColumn('razao_social')?.setFilterValue(value || undefined)
+  }
+})
+
 const pagination = ref({
   pageIndex: 0,
   pageSize: 10
@@ -178,7 +214,12 @@ const pagination = ref({
 
     <template #body>
       <div class="flex flex-wrap items-center justify-between gap-1.5">
-        <div />
+        <UInput
+          v-model="search"
+          class="max-w-sm"
+          icon="i-lucide-search"
+          placeholder="Buscar empresa..."
+        />
 
         <div class="flex flex-wrap items-center gap-1.5">
           <USelect
@@ -192,11 +233,40 @@ const pagination = ref({
             placeholder="Ambiente"
             class="min-w-28"
           />
+          <UDropdownMenu
+            :items="
+              table?.tableApi
+                ?.getAllColumns()
+                .filter((column: any) => column.getCanHide())
+                .map((column: any) => ({
+                  label: upperFirst(column.id),
+                  type: 'checkbox' as const,
+                  checked: column.getIsVisible(),
+                  onUpdateChecked(checked: boolean) {
+                    table?.tableApi?.getColumn(column.id)?.toggleVisibility(!!checked)
+                  },
+                  onSelect(e?: Event) {
+                    e?.preventDefault()
+                  }
+                }))
+            "
+            :content="{ align: 'end' }"
+          >
+            <UButton
+              label="Exibir"
+              color="neutral"
+              variant="outline"
+              trailing-icon="i-lucide-settings-2"
+            />
+          </UDropdownMenu>
         </div>
       </div>
 
       <UTable
         ref="table"
+        v-model:column-filters="columnFilters"
+        v-model:column-visibility="columnVisibility"
+        v-model:row-selection="rowSelection"
         v-model:pagination="pagination"
         :pagination-options="{
           getPaginationRowModel: getPaginationRowModel()
@@ -217,7 +287,8 @@ const pagination = ref({
 
       <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
         <div class="text-sm text-muted">
-          {{ companies.length }} empresa(s)
+          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} de
+          {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }} linha(s) selecionada(s).
         </div>
 
         <div class="flex items-center gap-1.5">
@@ -230,16 +301,16 @@ const pagination = ref({
         </div>
       </div>
     </template>
-
-    <EmpresasEditModal
-      v-if="editingCompany"
-      :company="editingCompany"
-      @updated="() => { editingCompany = null; refresh() }"
-    />
-    <EmpresasDeleteModal
-      v-if="deletingCompany"
-      :company="deletingCompany"
-      @deleted="() => { deletingCompany = null; refresh() }"
-    />
   </UDashboardPanel>
+
+  <EmpresasEditModal
+    v-if="editingCompany"
+    :company="editingCompany"
+    @updated="() => { editingCompany = null; refresh() }"
+  />
+  <EmpresasDeleteModal
+    v-if="deletingCompany"
+    :company="deletingCompany"
+    @deleted="() => { deletingCompany = null; refresh() }"
+  />
 </template>

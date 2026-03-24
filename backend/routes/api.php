@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
+use App\Http\Controllers\Admin\OfficeController as AdminOfficeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -23,7 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', LogoutController::class);
 
     Route::get('/me', function (Request $request) {
-        return response()->json($request->user()->load(['office', 'companies', 'roles']));
+        return response()->json($request->user()->load(['office.subscription.plan', 'companies', 'roles']));
     });
 
     // Companies (scoped by office)
@@ -47,5 +49,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('orcamentos', OrcamentoController::class);
         Route::post('orcamentos/{orcamento}/converter', [OrcamentoController::class, 'convertToPedido']);
         Route::apiResource('pedidos', PedidoController::class);
+    });
+
+    // Admin routes (only admin role)
+    Route::prefix('admin')->middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function () {
+        // Offices (contadores + diretas)
+        Route::get('offices/map', [AdminOfficeController::class, 'map']);
+        Route::post('offices/{office}/assign-plan', [AdminOfficeController::class, 'assignPlan']);
+        Route::apiResource('offices', AdminOfficeController::class);
+
+        // Invoices (cobranças)
+        Route::get('invoices/dashboard', [AdminInvoiceController::class, 'dashboard']);
+        Route::post('invoices/generate-monthly', [AdminInvoiceController::class, 'generateMonthly']);
+        Route::apiResource('invoices', AdminInvoiceController::class);
     });
 });

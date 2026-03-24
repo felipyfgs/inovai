@@ -68,6 +68,80 @@ export interface Office {
   phone: string | null
   email: string | null
   is_active: boolean
+  type: 'admin' | 'contador' | 'direct'
+  is_reseller: boolean
+  reseller_commission: number
+  parent_office_id: number | null
+  notes: string | null
+  companies_count?: number
+  users_count?: number
+  subscription?: Subscription
+  companies?: Company[]
+}
+
+export interface Plan {
+  id: number
+  name: string
+  description: string | null
+  price: number
+  max_companies: number
+  max_nfs_month: number
+  features: string[] | null
+  is_active: boolean
+}
+
+export interface Subscription {
+  id: number
+  office_id: number
+  plan_id: number
+  status: 'active' | 'cancelled' | 'expired' | 'trial'
+  starts_at: string
+  ends_at: string | null
+  plan?: Plan
+}
+
+export interface InvoiceItem {
+  id: number
+  invoice_id: number
+  description: string
+  quantity: number
+  unit_price: number
+  total: number
+}
+
+export interface Invoice {
+  id: number
+  office_id: number
+  plan_id: number | null
+  status: 'pending' | 'paid' | 'cancelled' | 'overdue'
+  amount: number
+  reference: string | null
+  notes: string | null
+  due_at: string
+  paid_at: string | null
+  office?: Office
+  plan?: Plan
+  items?: InvoiceItem[]
+}
+
+export interface AdminDashboard {
+  mrr: number
+  last_month_revenue: number
+  pending: number
+  overdue: number
+  total_offices: number
+  inadimplentes: number
+  churn_rate: number
+}
+
+export interface AdminMap {
+  contadores: Office[]
+  diretas: Office[]
+  totals: {
+    contadores: number
+    direct: number
+    companies: number
+  }
 }
 
 export interface AuthUser {
