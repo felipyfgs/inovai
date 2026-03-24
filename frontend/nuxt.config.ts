@@ -59,7 +59,7 @@ export default defineNuxtConfig({
       onGuestOnly: '/'
     },
     globalMiddleware: {
-      enabled: true
+      enabled: false
     }
   }
 })
