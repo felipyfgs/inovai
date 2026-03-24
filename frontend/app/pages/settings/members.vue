@@ -173,7 +173,7 @@ const roleOptions = computed(() => {
     @updated="refresh(); editingUser = null"
   />
 
-  <UModal v-model:open="!!deletingUser">
+  <UModal :open="!!deletingUser" @update:open="(v: boolean) => !v && (deletingUser = null)">
     <template #content>
       <UModalHeader title="Confirmar exclusão" />
       <div class="p-4">

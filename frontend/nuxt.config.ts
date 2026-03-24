@@ -1,5 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  ssr: false,
+
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
@@ -8,7 +10,7 @@ export default defineNuxtConfig({
   ],
 
   devtools: {
-    enabled: true
+    enabled: false
   },
 
   css: ['~/assets/css/main.css'],
@@ -22,6 +24,20 @@ export default defineNuxtConfig({
   routeRules: {
     '/api/**': {
       cors: true
+    }
+  },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@tanstack/table-core',
+        'zod',
+        '@internationalized/date',
+        'date-fns',
+        'scule',
+        '@unovis/ts',
+        '@unovis/vue'
+      ]
     }
   },
 
