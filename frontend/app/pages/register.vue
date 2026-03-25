@@ -7,6 +7,7 @@ definePageMeta({
 const config = useRuntimeConfig()
 const router = useRouter()
 const toast = useToast()
+const { extractMessage } = useApiError()
 
 const form = reactive({
   name: '',
@@ -33,11 +34,7 @@ async function handleRegister() {
     })
     router.push('/login')
   } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string, errors?: Record<string, string[]> } } }
-    const errors = err?.response?._data?.errors
-    const message = errors
-      ? Object.values(errors).flat().join(' ')
-      : err?.response?._data?.message || 'Erro ao cadastrar.'
+    const message = extractMessage(e) || 'Erro ao cadastrar.'
     toast.add({
       title: 'Erro ao cadastrar',
       description: message,

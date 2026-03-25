@@ -147,6 +147,7 @@ export interface AuthUser {
   phone: string | null
   office_id: number | null
   is_active: boolean
+  must_change_password: boolean
   office?: Office
   companies?: Company[]
   roles?: { id: number, name: string }[]

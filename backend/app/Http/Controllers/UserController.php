@@ -24,7 +24,7 @@ class UserController extends Controller
             if ($request->filled('office_id')) {
                 $query->where('office_id', $request->office_id);
             }
-        } elseif ($user->hasRole('office_user')) {
+        } elseif ($user->hasAnyRole(['office_user', 'accountant'])) {
             // Office user sees only users from their office
             $query->where('office_id', $user->office_id);
         } else {
@@ -65,7 +65,7 @@ class UserController extends Controller
 
         if ($currentUser->hasRole('admin')) {
             $rules['office_id'] = ['required', 'exists:offices,id'];
-            $rules['role'] = ['required', 'string', 'in:admin,office_user,company_user'];
+            $rules['role'] = ['required', 'string', 'in:admin,office_user,accountant,company_user'];
         } else {
             // office_user can only create company_user in their own office
             $rules['role'] = ['required', 'string', 'in:company_user'];
@@ -84,6 +84,7 @@ class UserController extends Controller
             'phone' => $validated['phone'] ?? null,
             'office_id' => $officeId,
             'is_active' => $validated['is_active'] ?? true,
+            'must_change_password' => $validated['role'] === 'company_user',
         ]);
 
         $user->assignRole($validated['role']);
@@ -126,7 +127,7 @@ class UserController extends Controller
         // Only admin can change role and office
         if ($currentUser->hasRole('admin')) {
             $rules['office_id'] = ['sometimes', 'exists:offices,id'];
-            $rules['role'] = ['sometimes', 'string', 'in:admin,office_user,company_user'];
+            $rules['role'] = ['sometimes', 'string', 'in:admin,office_user,accountant,company_user'];
         }
 
         $validated = $request->validate($rules);
@@ -191,6 +192,7 @@ class UserController extends Controller
 
         $user->update([
             'password' => Hash::make($request->password),
+            'must_change_password' => false,
         ]);
 
         return response()->json(['message' => 'Senha alterada com sucesso.']);
@@ -251,7 +253,7 @@ class UserController extends Controller
             return;
         }
 
-        if ($currentUser->hasRole('office_user')) {
+        if ($currentUser->hasAnyRole(['office_user', 'accountant'])) {
             if ($user->office_id !== $currentUser->office_id) {
                 abort(403, 'Sem permissão para acessar este usuário.');
             }

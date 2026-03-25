@@ -77,7 +77,7 @@ async function onSubmit(event: FormSubmitEvent<ProfileSchema>) {
       <UFormField
         name="email"
         label="E-mail"
-        description="Used for sign in and notifications."
+        description="Usado para login e notificações."
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >

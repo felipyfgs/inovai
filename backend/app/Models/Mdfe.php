@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Mdfe extends Model
 {
+    protected $table = 'mdfes';
+
     protected $fillable = [
         'company_id',
         'veiculo_id',

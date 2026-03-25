@@ -11,24 +11,9 @@ const isAdmin = computed(() => user.value?.roles?.some(r => r.name === 'admin') 
 const open = ref(false)
 
 const baseLinks = [{
-  label: 'Home',
+  label: 'Início',
   icon: 'i-lucide-house',
   to: '/',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Inbox',
-  icon: 'i-lucide-inbox',
-  to: '/inbox',
-  badge: '4',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Customers',
-  icon: 'i-lucide-users',
-  to: '/customers',
   onSelect: () => {
     open.value = false
   }
@@ -36,6 +21,13 @@ const baseLinks = [{
   label: 'Empresas',
   icon: 'i-lucide-building-2',
   to: '/empresas',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Usuários',
+  icon: 'i-lucide-users',
+  to: '/usuarios',
   onSelect: () => {
     open.value = false
   }
@@ -116,32 +108,20 @@ const baseLinks = [{
     open.value = false
   }
 }, {
-  label: 'Settings',
+  label: 'Configurações',
   to: '/settings',
   icon: 'i-lucide-settings',
   defaultOpen: true,
   type: 'trigger',
   children: [{
-    label: 'General',
+    label: 'Geral',
     to: '/settings',
     exact: true,
     onSelect: () => {
       open.value = false
     }
   }, {
-    label: 'Members',
-    to: '/settings/members',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Notifications',
-    to: '/settings/notifications',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Security',
+    label: 'Segurança',
     to: '/settings/security',
     onSelect: () => {
       open.value = false
@@ -182,15 +162,12 @@ const adminLinks = [{
 }]
 
 const bottomLinks = [{
-  label: 'Feedback',
-  icon: 'i-lucide-message-circle',
-  to: 'https://github.com/nuxt-ui-templates/dashboard',
-  target: '_blank'
-}, {
-  label: 'Help & Support',
+  label: 'Ajuda',
   icon: 'i-lucide-info',
-  to: 'https://github.com/nuxt-ui-templates/dashboard',
-  target: '_blank'
+  to: '/settings',
+  onSelect: () => {
+    open.value = false
+  }
 }]
 
 const links = computed<NavigationMenuItem[][]>(() => [
@@ -200,18 +177,8 @@ const links = computed<NavigationMenuItem[][]>(() => [
 
 const groups = computed(() => [{
   id: 'links',
-  label: 'Go to',
+  label: 'Ir para',
   items: links.value.flat()
-}, {
-  id: 'code',
-  label: 'Code',
-  items: [{
-    id: 'source',
-    label: 'View page source',
-    icon: 'i-simple-icons-github',
-    to: `https://github.com/nuxt-ui-templates/dashboard/blob/main/app/pages${route.path === '/' ? '/index' : route.path}.vue`,
-    target: '_blank'
-  }]
 }])
 
 onMounted(async () => {
@@ -221,18 +188,18 @@ onMounted(async () => {
   }
 
   toast.add({
-    title: 'We use first-party cookies to enhance your experience on our website.',
+    title: 'Utilizamos cookies para melhorar sua experiência.',
     duration: 0,
     close: false,
     actions: [{
-      label: 'Accept',
+      label: 'Aceitar',
       color: 'neutral',
       variant: 'outline',
       onClick: () => {
         cookie.value = 'accepted'
       }
     }, {
-      label: 'Opt out',
+      label: 'Recusar',
       color: 'neutral',
       variant: 'ghost'
     }]

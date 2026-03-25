@@ -8,6 +8,7 @@ import type { Office, PaginatedResponse } from '~/types'
 definePageMeta({ middleware: 'admin' })
 
 const toast = useToast()
+const { handleError } = useApiError()
 const table = useTemplateRef('table')
 
 const search = ref('')
@@ -121,8 +122,7 @@ async function handleDelete() {
     deletingOffice.value = null
     refresh()
   } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string } } }
-    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao remover.', color: 'error' })
+    handleError(e, 'Erro ao remover')
   }
 }
 </script>

@@ -32,7 +32,7 @@ class ResolveTenant
                     return \App\Models\Company::find($companyId);
                 }
 
-                if ($user->hasRole('office_user')) {
+                if ($user->hasAnyRole(['office_user', 'accountant'])) {
                     return \App\Models\Company::where('id', $companyId)
                         ->where('office_id', $user->office_id)
                         ->first();
@@ -62,7 +62,7 @@ class ResolveTenant
     private function getAutoSelectedCompanyId($user): ?int
     {
         // For office_user, check companies in their office
-        if ($user->hasRole('office_user')) {
+        if ($user->hasAnyRole(['office_user', 'accountant'])) {
             $companiesCount = \App\Models\Company::where('office_id', $user->office_id)->count();
             if ($companiesCount === 1) {
                 return \App\Models\Company::where('office_id', $user->office_id)->value('id');

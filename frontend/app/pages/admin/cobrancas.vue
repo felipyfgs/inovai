@@ -7,6 +7,7 @@ import type { Invoice, PaginatedResponse } from '~/types'
 definePageMeta({ middleware: 'admin' })
 
 const toast = useToast()
+const { handleError } = useApiError()
 const table = useTemplateRef('table')
 
 const statusFilter = ref('all')
@@ -116,8 +117,7 @@ async function handleGenerateMonthly() {
     refresh()
     refreshDashboard()
   } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string } } }
-    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao gerar faturas.', color: 'error' })
+    handleError(e, 'Erro ao gerar faturas')
   } finally {
     generatingMonthly.value = false
   }

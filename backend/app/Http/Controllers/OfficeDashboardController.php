@@ -22,7 +22,7 @@ class OfficeDashboardController extends Controller
             $totalNfe = \App\Models\NotaFiscal::whereIn('company_id', $companyIds)->count();
             $nfeAutorizadas = \App\Models\NotaFiscal::whereIn('company_id', $companyIds)->where('status', 'autorizada')->count();
             $totalCte = \App\Models\Cte::whereIn('company_id', $companyIds)->count();
-            $totalMdfe = \App\Models\MdFe::whereIn('company_id', $companyIds)->count();
+            $totalMdfe = \App\Models\Mdfe::whereIn('company_id', $companyIds)->count();
 
             $certificadosVencendo = $companies->filter(function ($c) {
                 return $c->certificado_validade && $c->certificado_validade->diffInDays(now()) <= 30 && $c->certificado_validade->isFuture();

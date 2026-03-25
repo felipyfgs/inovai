@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 // Auth (public)
 Route::post('/register', RegisterController::class);
 Route::post('/login', LoginController::class);
+Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, '__invoke']);
+Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, '__invoke']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {

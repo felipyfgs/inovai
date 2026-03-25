@@ -1,11 +1,15 @@
 <script setup lang="ts">
+import type { AuthUser } from '~/types'
+
 definePageMeta({
-  layout: 'auth'
+  layout: 'auth',
+  sanctum: { guestOnly: true }
 })
 
-const { login } = useSanctumAuth()
+const { login, user } = useSanctumAuth<AuthUser>()
 const router = useRouter()
 const toast = useToast()
+const { handleError } = useApiError()
 
 const form = reactive({
   email: '',
@@ -20,14 +24,14 @@ async function handleLogin() {
       email: form.email,
       password: form.password
     })
-    router.push('/')
+    if (user.value?.must_change_password) {
+      toast.add({ title: 'Troque sua senha', description: 'Por segurança, defina uma nova senha.', color: 'warning' })
+      router.push('/settings/security')
+    } else {
+      router.push('/')
+    }
   } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string } } }
-    toast.add({
-      title: 'Erro ao entrar',
-      description: err?.response?._data?.message || 'Credenciais inválidas.',
-      color: 'error'
-    })
+    handleError(e, 'Credenciais inválidas')
   } finally {
     loading.value = false
   }
@@ -74,6 +78,12 @@ async function handleLogin() {
             class="w-full"
           />
         </UFormField>
+
+        <div class="flex justify-end">
+          <NuxtLink to="/forgot-password" class="text-sm text-primary font-medium">
+            Esqueceu a senha?
+          </NuxtLink>
+        </div>
 
         <UButton
           type="submit"
