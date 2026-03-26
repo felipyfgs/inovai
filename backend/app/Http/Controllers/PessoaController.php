@@ -25,8 +25,8 @@ class PessoaController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('razao_social', 'ilike', "%{$search}%")
-                  ->orWhere('fantasia', 'ilike', "%{$search}%")
-                  ->orWhere('cpf_cnpj', 'like', "%{$search}%");
+                    ->orWhere('fantasia', 'ilike', "%{$search}%")
+                    ->orWhere('cpf_cnpj', 'like', "%{$search}%");
             });
         }
 

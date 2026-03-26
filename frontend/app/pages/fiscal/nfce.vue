@@ -10,6 +10,8 @@
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <UButton
             label="Nova NFC-e"
             icon="i-lucide-plus"

@@ -21,7 +21,7 @@ const rowSelection = ref({})
 
 const { data, status, refresh } = useApi<PaginatedResponse<Produto>>('/produtos', {
   lazy: true,
-  watch: [() => currentCompany.value?.id]
+  watch: [computed(() => currentCompany.value?.id)]
 })
 
 const produtos = computed(() => data.value?.data || [])
@@ -198,6 +198,8 @@ const pagination = ref({
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <ProdutosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

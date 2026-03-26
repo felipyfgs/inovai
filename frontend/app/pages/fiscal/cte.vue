@@ -10,6 +10,8 @@
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <UButton
             label="Novo CT-e"
             icon="i-lucide-plus"

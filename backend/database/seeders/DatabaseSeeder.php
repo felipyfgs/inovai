@@ -4,11 +4,12 @@ namespace Database\Seeders;
 
 use App\Models\Office;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -134,7 +135,7 @@ class DatabaseSeeder extends Seeder
         $officeUser->assignRole('office_user');
 
         // Create demo subscription
-        \App\Models\Subscription::create([
+        Subscription::create([
             'office_id' => $demoOffice->id,
             'plan_id' => Plan::where('name', 'Profissional')->first()->id,
             'status' => 'active',

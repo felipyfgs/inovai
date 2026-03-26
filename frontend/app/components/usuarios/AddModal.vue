@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { AuthUser, Company, Office, PaginatedResponse } from '~/types'
+import type { Company, Office, PaginatedResponse } from '~/types'
 
+const props = defineProps<{ officeId?: number }>()
 const emit = defineEmits<{ created: [] }>()
-
-const { user } = useSanctumAuth<AuthUser>()
 
 const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { post } = useApiMutation()
 const formRef = useTemplateRef('formRef')
-
-const isAdmin = computed(() => user.value?.roles?.some(r => r.name === 'admin') ?? false)
+const { effectiveRole } = useAccessContext()
+const isEffectiveAdmin = computed(() => effectiveRole.value === 'platform_admin')
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -52,7 +51,7 @@ const companies = computed(() => companiesData.value?.data ?? [])
 
 const offices = ref<Office[]>([])
 
-if (isAdmin.value) {
+if (isEffectiveAdmin.value) {
   const { data: officesData } = useApi<PaginatedResponse<Office>>('/admin/offices', {
     lazy: true,
     query: { per_page: 200 }
@@ -62,8 +61,14 @@ if (isAdmin.value) {
   })
 }
 
+watch(open, (isOpen) => {
+  if (isOpen && isEffectiveAdmin.value && props.officeId) {
+    state.office_id = props.officeId
+  }
+})
+
 const availableRoles = computed(() => {
-  if (isAdmin.value) {
+  if (isEffectiveAdmin.value) {
     return [
       { label: 'Admin', value: 'admin' },
       { label: 'Contador', value: 'accountant' },
@@ -77,7 +82,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
     const payload: Record<string, unknown> = { ...event.data }
-    if (!isAdmin.value) {
+    if (!isEffectiveAdmin.value) {
       delete payload.office_id
     }
     if (event.data.role !== 'company_user') {
@@ -190,7 +195,7 @@ function resetForm() {
         </div>
 
         <UFormField
-          v-if="isAdmin && (state.role === 'office_user' || state.role === 'accountant')"
+          v-if="isEffectiveAdmin && !props.officeId && (state.role === 'office_user' || state.role === 'accountant')"
           name="office_id"
           label="Escritório"
           required

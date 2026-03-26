@@ -20,7 +20,7 @@ const rowSelection = ref({})
 
 const { data, status, refresh } = useApi<PaginatedResponse<Transportadora>>('/transportadoras', {
   lazy: true,
-  watch: [() => currentCompany.value?.id]
+  watch: [computed(() => currentCompany.value?.id)]
 })
 
 const transportadoras = computed(() => data.value?.data || [])
@@ -157,6 +157,8 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <TransportadorasAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

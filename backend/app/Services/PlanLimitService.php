@@ -16,7 +16,7 @@ class PlanLimitService
     {
         $office = $company->office;
 
-        if (!$office) {
+        if (! $office) {
             return [
                 'allowed' => false,
                 'reason' => 'Empresa sem escritório vinculado.',
@@ -25,7 +25,7 @@ class PlanLimitService
 
         $subscription = $office->subscription;
 
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             return [
                 'allowed' => false,
                 'reason' => 'Nenhuma assinatura ativa encontrada.',
@@ -81,7 +81,7 @@ class PlanLimitService
     {
         $subscription = $office->subscription;
 
-        if (!$subscription || !$subscription->plan) {
+        if (! $subscription || ! $subscription->plan) {
             return [
                 'allowed' => false,
                 'reason' => 'Nenhuma assinatura ativa encontrada.',
@@ -125,7 +125,7 @@ class PlanLimitService
     {
         $office = $company->office;
 
-        if (!$office?->subscription?->plan) {
+        if (! $office?->subscription?->plan) {
             return [];
         }
 

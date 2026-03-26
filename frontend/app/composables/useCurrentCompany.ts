@@ -21,7 +21,7 @@ export function useCurrentCompany() {
     return id ? Number(id) : null
   }
 
-  const initializeFromCompanies = (companies: Company[]) => {
+  const initializeFromCompanies = (companies: Company[], isAdmin: boolean = false) => {
     if (initialized.value || companies.length === 0) return
 
     const storedId = getStoredCompanyId()
@@ -29,21 +29,41 @@ export function useCurrentCompany() {
 
     if (storedCompany) {
       currentCompany.value = storedCompany
-    } else if (companies.length === 1) {
-      const singleCompany = companies[0]
-      currentCompany.value = singleCompany
-      if (import.meta.client && singleCompany) {
-        localStorage.setItem('current_company_id', String(singleCompany.id))
+    } else if (!isAdmin) {
+      // Non-admin users: select first company as default
+      const firstCompany = companies[0]
+      if (firstCompany) {
+        currentCompany.value = firstCompany
+        if (import.meta.client) {
+          localStorage.setItem('current_company_id', String(firstCompany.id))
+        }
       }
     }
+    // Admin users: stay without company if nothing stored
 
     initialized.value = true
+  }
+
+  const fetchDefaultCompany = async () => {
+    if (initialized.value || import.meta.server) return
+
+    const { $sanctumClient } = useNuxtApp()
+    try {
+      const response = await $sanctumClient<{ company: Company | null }>('/api/default-company')
+      if (response.company) {
+        setCompany(response.company)
+      }
+      initialized.value = true
+    } catch {
+      // Silently fail - will be initialized when companies load
+    }
   }
 
   return {
     currentCompany: readonly(currentCompany),
     setCompany,
     getStoredCompanyId,
-    initializeFromCompanies
+    initializeFromCompanies,
+    fetchDefaultCompany
   }
 }

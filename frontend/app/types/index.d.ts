@@ -16,13 +16,18 @@ export interface AppUser {
   id: number
   name: string
   email: string
-  phone: string | null
-  office_id: number | null
-  is_active: boolean
+  phone?: string | null
+  office_id?: number | null
+  is_active?: boolean
+  avatar?: string | AvatarProps
+  status?: UserStatus
+  location?: string
   office?: Office
   companies?: Company[]
   roles?: { id: number, name: string }[]
 }
+
+export type User = AppUser
 
 export interface Stat {
   title: string
@@ -73,6 +78,8 @@ export interface Office {
   users_count?: number
   subscription?: Subscription
   companies?: Company[]
+  invoices?: Invoice[]
+  users?: User[]
 }
 
 export interface Plan {

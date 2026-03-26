@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\OfficeController as AdminOfficeController;
+use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\OfficeDashboardController;
@@ -14,14 +17,17 @@ use App\Http\Controllers\PessoaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\TransportadoraController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\ResolveTenant;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Auth (public)
 Route::post('/register', RegisterController::class);
 Route::post('/login', LoginController::class);
-Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, '__invoke']);
-Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, '__invoke']);
+Route::post('/forgot-password', [ForgotPasswordController::class, '__invoke']);
+Route::post('/reset-password', [ResetPasswordController::class, '__invoke']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -33,8 +39,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/me', [UserController::class, 'updateProfile']);
     Route::put('/me/password', [UserController::class, 'updatePassword']);
 
+    Route::get('/default-company', function (Request $request) {
+        $user = $request->user();
+
+        // Admin: no default company
+        if ($user->hasRole('admin')) {
+            return response()->json(['company' => null]);
+        }
+
+        // Contador (office_user/accountant): first company of their office
+        if ($user->hasAnyRole(['office_user', 'accountant'])) {
+            $company = Company::where('office_id', $user->office_id)
+                ->orderBy('id')
+                ->first();
+
+            return response()->json(['company' => $company]);
+        }
+
+        // Empresário (company_user): first attached company
+        $company = $user->companies()->orderBy('companies.id')->first();
+
+        return response()->json(['company' => $company]);
+    });
+
     // Users management
     Route::apiResource('users', UserController::class);
+    Route::patch('users/{user}/toggle-active', [UserController::class, 'toggleActive']);
     Route::get('users/{user}/companies', [UserController::class, 'companies']);
     Route::post('users/{user}/companies', [UserController::class, 'attachCompanies']);
     Route::delete('users/{user}/companies/{company}', [UserController::class, 'detachCompany']);
@@ -50,7 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);
 
     // Routes that require a company context (X-Company-Id header)
-    Route::middleware(\App\Http\Middleware\ResolveTenant::class)->group(function () {
+    Route::middleware(ResolveTenant::class)->group(function () {
         // Dashboard per company
         Route::get('/dashboard/company', [CompanyDashboardController::class, 'index']);
 
@@ -66,7 +96,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin routes (only admin role)
-    Route::prefix('admin')->middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function () {
+    Route::prefix('admin')->middleware(EnsureAdmin::class)->group(function () {
+        // Plans
+        Route::apiResource('plans', PlanController::class);
+
         // Offices (contadores + diretas)
         Route::get('offices/map', [AdminOfficeController::class, 'map']);
         Route::post('offices/{office}/assign-plan', [AdminOfficeController::class, 'assignPlan']);

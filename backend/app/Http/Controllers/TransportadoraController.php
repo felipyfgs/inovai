@@ -21,7 +21,7 @@ class TransportadoraController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('razao_social', 'ilike', "%{$search}%")
-                  ->orWhere('cnpj', 'like', "%{$search}%");
+                    ->orWhere('cnpj', 'like', "%{$search}%");
             });
         }
 
@@ -58,6 +58,7 @@ class TransportadoraController extends Controller
     public function show(Transportadora $transportadora): JsonResponse
     {
         $this->authorize_resource($transportadora);
+
         return response()->json($transportadora->load('veiculos'));
     }
 
@@ -84,6 +85,7 @@ class TransportadoraController extends Controller
         ]);
 
         $transportadora->update($validated);
+
         return response()->json($transportadora);
     }
 
@@ -91,6 +93,7 @@ class TransportadoraController extends Controller
     {
         $this->authorize_resource($transportadora);
         $transportadora->delete();
+
         return response()->json(['message' => 'Transportadora removida com sucesso.']);
     }
 

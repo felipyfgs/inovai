@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, AvatarProps } from '@nuxt/ui'
 
 defineProps<{
-  members: Array<{ name: string, username: string, role: string, avatar?: any }>
+  members: Array<{ name: string, username: string, role: string, avatar?: AvatarProps }>
 }>()
 
 const items = [{

@@ -18,7 +18,7 @@ const rowSelection = ref({})
 
 const { data, status } = useApi<PaginatedResponse<NotaFiscal>>('/notas-fiscais?modelo=55', {
   lazy: true,
-  watch: [() => currentCompany.value?.id]
+  watch: [computed(() => currentCompany.value?.id)]
 })
 
 const notas = computed(() => data.value?.data || [])
@@ -158,6 +158,8 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <UButton
             label="Nova NF-e"
             icon="i-lucide-plus"

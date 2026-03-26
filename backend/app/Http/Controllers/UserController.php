@@ -40,7 +40,7 @@ class UserController extends Controller
         }
 
         if ($request->filled('role')) {
-            $query->whereHas('roles', fn($q) => $q->where('name', $request->role));
+            $query->whereHas('roles', fn ($q) => $q->where('name', $request->role));
         }
 
         $users = $query->orderBy('name')->paginate($request->get('per_page', 50));
@@ -119,7 +119,7 @@ class UserController extends Controller
 
         $rules = [
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['nullable', 'boolean'],
         ];
@@ -159,13 +159,40 @@ class UserController extends Controller
     }
 
     /**
+     * Toggle user active status (block/unblock)
+     */
+    public function toggleActive(Request $request, User $user): JsonResponse
+    {
+        $currentUser = $request->user();
+
+        // Platform admin can toggle any user
+        if (! $currentUser->hasRole('admin')) {
+            // Office user can only toggle users in their office
+            if ($user->office_id !== $currentUser->office_id) {
+                return response()->json(['message' => 'Sem permissão para alterar este usuário.'], 403);
+            }
+        }
+
+        if ($user->id === $currentUser->id) {
+            return response()->json(['message' => 'Não é possível bloquear a si mesmo.'], 422);
+        }
+
+        $user->update(['is_active' => ! $user->is_active]);
+
+        return response()->json([
+            'message' => $user->is_active ? 'Usuário desbloqueado com sucesso.' : 'Usuário bloqueado com sucesso.',
+            'is_active' => $user->is_active,
+        ]);
+    }
+
+    /**
      * Update current user's profile
      */
     public function updateProfile(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $request->user()->id],
+            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
             'phone' => ['nullable', 'string', 'max:20'],
         ]);
 
@@ -186,7 +213,7 @@ class UserController extends Controller
 
         $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return response()->json(['message' => 'Senha atual incorreta.'], 422);
         }
 
@@ -257,6 +284,7 @@ class UserController extends Controller
             if ($user->office_id !== $currentUser->office_id) {
                 abort(403, 'Sem permissão para acessar este usuário.');
             }
+
             return;
         }
 

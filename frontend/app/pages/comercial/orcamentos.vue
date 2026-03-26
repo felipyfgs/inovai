@@ -18,7 +18,7 @@ const rowSelection = ref({})
 
 const { data, status, refresh } = useApi<PaginatedResponse<Orcamento>>('/orcamentos', {
   lazy: true,
-  watch: [() => currentCompany.value?.id]
+  watch: [computed(() => currentCompany.value?.id)]
 })
 
 const orcamentos = computed(() => data.value?.data || [])
@@ -174,6 +174,8 @@ const pagination = ref({
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <OrcamentosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

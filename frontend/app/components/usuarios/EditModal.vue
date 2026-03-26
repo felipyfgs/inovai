@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { AppUser, AuthUser, Company, Office, PaginatedResponse } from '~/types'
+import type { AppUser, Company, Office, PaginatedResponse } from '~/types'
 
 const props = defineProps<{ user: AppUser | null }>()
 const emit = defineEmits<{ updated: [] }>()
-
-const { user: currentUser } = useSanctumAuth<AuthUser>()
 
 const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { put } = useApiMutation()
 const formRef = useTemplateRef('formRef')
-
-const isAdmin = computed(() => currentUser.value?.roles?.some(r => r.name === 'admin') ?? false)
+const { isPlatformAdmin } = useAccessContext()
+const isEffectiveAdmin = computed(() => isPlatformAdmin.value)
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -39,7 +37,7 @@ const companies = computed(() => companiesData.value?.data ?? [])
 
 const offices = ref<Office[]>([])
 
-if (isAdmin.value) {
+if (isEffectiveAdmin.value) {
   const { data: officesData } = useApi<PaginatedResponse<Office>>('/admin/offices', {
     lazy: true,
     query: { per_page: 200 }
@@ -82,7 +80,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
     const payload: Record<string, unknown> = { ...event.data }
-    if (!isAdmin.value) {
+    if (!isEffectiveAdmin.value) {
       delete payload.role
     }
     await put(`/users/${props.user.id}`, payload)
@@ -117,7 +115,7 @@ async function toggleCompany(companyId: number, attach: boolean) {
 }
 
 const availableRoles = computed(() => {
-  if (isAdmin.value) {
+  if (isEffectiveAdmin.value) {
     return [
       { label: 'Admin', value: 'admin' },
       { label: 'Contador', value: 'accountant' },
@@ -182,13 +180,13 @@ const availableRoles = computed(() => {
             />
           </UFormField>
 
-          <UFormField v-if="isAdmin" name="role" label="Perfil">
+          <UFormField v-if="isEffectiveAdmin" name="role" label="Perfil">
             <USelect v-model="state.role" :items="availableRoles" class="w-full" />
           </UFormField>
         </div>
 
         <UFormField
-          v-if="isAdmin && (state.role === 'office_user' || state.role === 'accountant')"
+          v-if="isEffectiveAdmin && (state.role === 'office_user' || state.role === 'accountant')"
           name="office_id"
           label="Escritório"
           required

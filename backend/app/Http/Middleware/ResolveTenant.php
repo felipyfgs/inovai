@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Company;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,14 +14,14 @@ class ResolveTenant
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $companyId = $request->header('X-Company-Id');
 
         // If no company header, try to auto-select single company
-        if (!$companyId && !$user->hasRole('admin')) {
+        if (! $companyId && ! $user->hasRole('admin')) {
             $companyId = $this->getAutoSelectedCompanyId($user);
         }
 
@@ -29,11 +30,11 @@ class ResolveTenant
 
             $company = Cache::remember($cacheKey, 300, function () use ($user, $companyId) {
                 if ($user->hasRole('admin')) {
-                    return \App\Models\Company::find($companyId);
+                    return Company::find($companyId);
                 }
 
                 if ($user->hasAnyRole(['office_user', 'accountant'])) {
-                    return \App\Models\Company::where('id', $companyId)
+                    return Company::where('id', $companyId)
                         ->where('office_id', $user->office_id)
                         ->first();
                 }
@@ -41,7 +42,7 @@ class ResolveTenant
                 return $user->companies()->where('companies.id', $companyId)->first();
             });
 
-            if (!$company) {
+            if (! $company) {
                 return response()->json(['message' => 'Sem permissão para acessar esta empresa.'], 403);
             }
 
@@ -63,9 +64,9 @@ class ResolveTenant
     {
         // For office_user, check companies in their office
         if ($user->hasAnyRole(['office_user', 'accountant'])) {
-            $companiesCount = \App\Models\Company::where('office_id', $user->office_id)->count();
+            $companiesCount = Company::where('office_id', $user->office_id)->count();
             if ($companiesCount === 1) {
-                return \App\Models\Company::where('office_id', $user->office_id)->value('id');
+                return Company::where('office_id', $user->office_id)->value('id');
             }
         }
 

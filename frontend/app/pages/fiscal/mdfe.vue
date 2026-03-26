@@ -10,6 +10,8 @@
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <UButton
             label="Novo MDF-e"
             icon="i-lucide-plus"

@@ -40,13 +40,19 @@ async function handleSubmit() {
 <template>
   <div>
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-highlighted">InovAI</h1>
-      <p class="text-muted mt-2">Redefinir senha</p>
+      <h1 class="text-3xl font-bold text-highlighted">
+        InovAI
+      </h1>
+      <p class="text-muted mt-2">
+        Redefinir senha
+      </p>
     </div>
 
     <UCard>
       <template #header>
-        <h2 class="text-lg font-semibold">Nova senha</h2>
+        <h2 class="text-lg font-semibold">
+          Nova senha
+        </h2>
       </template>
 
       <form class="flex flex-col gap-4" @submit.prevent="handleSubmit">

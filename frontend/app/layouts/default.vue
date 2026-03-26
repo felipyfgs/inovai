@@ -1,40 +1,24 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
-import type { AuthUser } from '~/types'
 
-const route = useRoute()
 const toast = useToast()
-const { user } = useSanctumAuth<AuthUser>()
-
-const isAdmin = computed(() => user.value?.roles?.some(r => r.name === 'admin') ?? false)
+const { canSee, isPlatformAdmin } = useAccessContext()
 
 const open = ref(false)
 
-const baseLinks = [{
+const companyLinks = [{
   label: 'Início',
   icon: 'i-lucide-house',
   to: '/',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Empresas',
-  icon: 'i-lucide-building-2',
-  to: '/empresas',
-  onSelect: () => {
-    open.value = false
-  }
-}, {
-  label: 'Usuários',
-  icon: 'i-lucide-users',
-  to: '/usuarios',
+  module: 'inicio',
   onSelect: () => {
     open.value = false
   }
 }, {
   label: 'Cadastros',
   icon: 'i-lucide-database',
-  type: 'trigger',
+  type: 'trigger' as const,
+  module: 'cadastros',
   children: [{
     label: 'Pessoas',
     to: '/cadastros/pessoas',
@@ -57,7 +41,8 @@ const baseLinks = [{
 }, {
   label: 'Comercial',
   icon: 'i-lucide-shopping-cart',
-  type: 'trigger',
+  type: 'trigger' as const,
+  module: 'comercial',
   children: [{
     label: 'Orçamentos',
     to: '/comercial/orcamentos',
@@ -74,7 +59,8 @@ const baseLinks = [{
 }, {
   label: 'Fiscal',
   icon: 'i-lucide-file-text',
-  type: 'trigger',
+  type: 'trigger' as const,
+  module: 'fiscal',
   children: [{
     label: 'NF-e',
     to: '/fiscal/nfe',
@@ -104,19 +90,43 @@ const baseLinks = [{
   label: 'Estoque',
   icon: 'i-lucide-warehouse',
   to: '/estoque',
+  module: 'estoque',
   onSelect: () => {
     open.value = false
   }
 }, {
+  label: 'Empresas',
+  icon: 'i-lucide-building-2',
+  to: '/empresas',
+  module: 'empresas',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Usuários',
+  icon: 'i-lucide-users',
+  to: '/usuarios',
+  module: 'usuarios',
+  onSelect: () => {
+    open.value = false
+  }
+}]
+
+const configLink = {
   label: 'Configurações',
-  to: '/settings',
   icon: 'i-lucide-settings',
-  defaultOpen: true,
-  type: 'trigger',
+  module: 'config',
+  type: 'trigger' as const,
   children: [{
     label: 'Geral',
     to: '/settings',
     exact: true,
+    onSelect: () => {
+      open.value = false
+    }
+  } as NavigationMenuItem, {
+    label: 'Integrações',
+    to: '/settings/integrations',
     onSelect: () => {
       open.value = false
     }
@@ -127,58 +137,69 @@ const baseLinks = [{
       open.value = false
     }
   }]
-}]
+}
 
 const adminLinks = [{
-  label: 'Admin',
-  icon: 'i-lucide-shield',
-  type: 'trigger' as const,
-  children: [{
-    label: 'Dashboard Admin',
-    to: '/admin',
-    exact: true,
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Contadores & Clientes',
-    to: '/admin/contadores',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Cobranças',
-    to: '/admin/cobrancas',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Mapa de Empresas',
-    to: '/admin/mapa',
-    onSelect: () => {
-      open.value = false
-    }
-  }]
+  label: 'Dashboard',
+  icon: 'i-lucide-layout-dashboard',
+  to: '/admin',
+  exact: true,
+  module: 'admin-dashboard',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Escritórios',
+  icon: 'i-lucide-building-2',
+  to: '/admin/escritorios',
+  module: 'admin-escritorios',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Planos',
+  icon: 'i-lucide-package',
+  to: '/admin/planos',
+  module: 'admin-planos',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Cobranças',
+  icon: 'i-lucide-receipt',
+  to: '/admin/cobrancas',
+  module: 'admin-cobrancas',
+  onSelect: () => {
+    open.value = false
+  }
 }]
 
 const bottomLinks = [{
   label: 'Ajuda',
   icon: 'i-lucide-info',
   to: '/settings',
+  module: 'config',
   onSelect: () => {
     open.value = false
   }
 }]
 
+const allLinks = computed<(NavigationMenuItem & { module?: string })[]>(() => {
+  if (isPlatformAdmin.value) {
+    return [...adminLinks, configLink]
+  }
+  return [...companyLinks, configLink]
+})
+
 const links = computed<NavigationMenuItem[][]>(() => [
-  [...baseLinks, ...(isAdmin.value ? adminLinks : [])],
+  allLinks.value.filter(item => !item.module || canSee(item.module as 'config')),
   bottomLinks
 ])
 
 const groups = computed(() => [{
   id: 'links',
   label: 'Ir para',
-  items: links.value.flat()
+  items: links.value.flat() as NavigationMenuItem[]
 }])
 
 onMounted(async () => {
@@ -218,7 +239,8 @@ onMounted(async () => {
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
-        <TeamsMenu :collapsed="collapsed" />
+        <OfficeSelector v-if="isPlatformAdmin" :collapsed="collapsed" />
+        <TeamsMenu v-else :collapsed="collapsed" />
       </template>
 
       <template #default="{ collapsed }">
@@ -249,7 +271,5 @@ onMounted(async () => {
     <UDashboardSearch :groups="groups" />
 
     <slot />
-
-    <NotificationsSlideover />
   </UDashboardGroup>
 </template>

@@ -2,186 +2,173 @@
 
 ## Project Overview
 
-InovAI is a multi-tenant SaaS application for Brazilian accounting firms to manage companies and issue fiscal documents (NF-e, NFC-e, CT-e, MDF-e). Includes an admin panel for managing offices (contadores), subscriptions, invoicing, and platform-wide analytics.
-
-- **Backend**: Laravel 11 (PHP 8.2+) with PostgreSQL, Redis, Sanctum auth
-- **Frontend**: Nuxt 3 with TypeScript, Nuxt UI, TanStack Table
-- **Architecture**: Multi-tenant with company_id scoping via `X-Company-Id` header
+InovAI is a multi-tenant SaaS for Brazilian accounting firms. **Backend**: Laravel 11 (PHP 8.3+) with PostgreSQL, Redis, Sanctum. **Frontend**: Nuxt 3 with TypeScript, Nuxt UI, TanStack Table. Multi-tenancy via `X-Company-Id` header.
 
 ## Build/Lint/Test Commands
 
 ### Backend (Laravel)
-
 ```bash
-# Install dependencies
-composer install
-
-# Run migrations
-php artisan migrate
-
-# Run seeders (creates admin, demo office, plans)
-php artisan db:seed
-
-# Run all tests
-php artisan test
-
-# Run a single test file
-php artisan test --filter=PessoaControllerTest
-
-# Run a single test method
-php artisan test --filter=PessoaControllerTest::test_can_list_pessoas
-
-# Run linting (if PHP CS Fixer configured)
-./vendor/bin/pint
-
-# Clear caches
-php artisan optimize:clear
+composer install && php artisan migrate && php artisan db:seed
+php artisan test                          # All tests
+php artisan test --filter=PessoaControllerTest           # Single test file
+php artisan test --filter=PessoaControllerTest::test_can_list_pessoas  # Single method
+./vendor/bin/pint                         # Lint (PSR-12)
+php artisan optimize:clear                # Clear caches
 ```
 
 ### Frontend (Nuxt)
-
 ```bash
-# Install dependencies
 pnpm install
-
-# Run dev server (proxies API to localhost:8000)
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run linting
-pnpm lint
-
-# Run type checking
-pnpm typecheck
-
-# Run lint + typecheck
-pnpm lint && pnpm typecheck
-```
-
-## Architecture
-
-### Roles & Access Control
-
-- **admin**: Platform administrators. Full access to admin panel (`/admin/*` routes). Managed via `EnsureAdmin` middleware.
-- **office_user** (default): Accounting firm users. Scoped to their `office_id`. Can manage companies belonging to their office.
-- **company_user**: Users directly attached to specific companies. Access limited to assigned companies via `$user->companies()`.
-
-### Route Structure (Backend)
-
-```
-POST   /api/register, /api/login          # Public auth
-POST   /api/logout                         # Authenticated
-GET    /api/me                             # Current user with office, companies, roles
-
-# Office-scoped (no X-Company-Id needed)
-GET|POST        /api/companies
-GET|PUT|DELETE  /api/companies/{id}
-GET             /api/dashboard/office
-
-# Company-scoped (requires X-Company-Id header → ResolveTenant middleware)
-GET|POST        /api/pessoas, /api/produtos, /api/transportadoras
-GET|POST        /api/orcamentos, /api/pedidos
-GET             /api/dashboard/company
-
-# Admin-only (requires admin role → EnsureAdmin middleware)
-GET|POST        /api/admin/offices
-GET|PUT|DELETE  /api/admin/offices/{id}
-POST            /api/admin/offices/{id}/assign-plan
-GET             /api/admin/offices/map
-GET|POST        /api/admin/invoices
-GET|PUT|DELETE  /api/admin/invoices/{id}
-GET             /api/admin/invoices/dashboard
-POST            /api/admin/invoices/generate-monthly
-```
-
-### Key Models
-
-- **Office**: Accounting firm or direct client. Has `type` (admin/contador/direct), reseller fields, parent_office_id.
-- **Company**: A client company managed by an office. Scoped by `office_id`.
-- **Plan/Subscription**: SaaS plans with `max_companies` and `max_nfs_month` limits.
-- **Invoice/InvoiceItem**: Platform billing. Tracks monthly charges per office.
-- **Pessoa, Produto, Transportadora**: Client-managed entities scoped by `company_id`.
-- **Orcamento, Pedido**: Commercial flow (quotes → orders).
-- **NotaFiscal, Cte, Mdfe**: Fiscal documents.
-
-### Frontend Page Structure
-
-```
-/login, /register                    # Auth (layout: auth, guest-only)
-/                                    # Office dashboard
-/empresas                            # Company management (with search, filters, row selection)
-/cadastros/pessoas                   # People registry
-/cadastros/produtos                  # Products registry
-/cadastros/transportadoras           # Carriers registry
-/comercial/orcamentos                # Quotes
-/comercial/pedidos                   # Orders
-/fiscal/nfe, /fiscal/nfce            # Fiscal documents
-/fiscal/cte, /fiscal/mdfe            # Transport documents
-/admin                               # Admin dashboard (middleware: admin)
-/admin/contadores                    # Office management
-/admin/cobrancas                     # Invoice/billing management
-/admin/mapa                          # Offices × Companies map
-/settings/*                          # User settings
+pnpm dev                                  # Dev server (proxies to localhost:8000)
+pnpm build                                # Production build
+pnpm lint && pnpm typecheck               # Lint + typecheck
 ```
 
 ## Code Style Guidelines
 
 ### Backend (Laravel/PHP)
 
-- **PSR-12** coding standard enforced via Laravel Pint
-- Use **dependency injection** via constructor (see `OrcamentoController`, `PedidoController`)
-- Controllers use `HasPagination` trait for consistent pagination
-- Always scope queries to `current_company`: `$company = app('current_company')`
-- Admin controllers live in `App\Http\Controllers\Admin\` namespace
-- Use **Form Requests** for validation (`StoreOrcamentoRequest`, `UpdatePedidoRequest`)
-- Use **API Resources** for responses (`OrcamentoResource`, `PedidoResource`)
-- Services handle business logic (`OrcamentoService`, `PedidoService`)
-- Authorize resources manually: `$this->authorizeResource($model)` or check `company_id`
-- Return JSON responses: `response()->json($data, $statusCode)`
-- Use cache for dashboard queries: `Cache::remember($key, 300, fn() => ...)`
-- Plan limits enforced in controllers (e.g., `max_companies` check in `CompanyController@store`)
+**PSR-12** enforced via Pint.
+
+**Controllers**: Constructor dependency injection, `HasPagination` trait, always scope to `current_company`.
+```php
+class OrcamentoController extends Controller
+{
+    use HasPagination;
+
+    public function __construct(private OrcamentoService $service) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $company = app('current_company');
+        $query = $company->orcamentos()->with('pessoa');
+        return response()->json($this->paginate($query, $request));
+    }
+}
+```
+
+**Form Requests**: Place in `app/Http/Requests/`, return `true` from `authorize()`.
+```php
+class StoreOrcamentoRequest extends FormRequest
+{
+    public function authorize(): bool { return true; }
+    public function rules(): array { return [ 'pessoa_id' => ['nullable', 'exists:pessoas,id'] ]; }
+}
+```
+
+**API Resources**: Use `new Resource($model)` or `Resource::collection()`, `$this->whenLoaded('relation')`.
+```php
+class OrcamentoResource extends JsonResource
+{
+    public function toArray(Request $request): array {
+        return ['id' => $this->id, 'pessoa' => new PessoaResource($this->whenLoaded('pessoa'))];
+    }
+}
+```
+
+**Services**: Business logic in `app/Services/`, `DB::transaction()` for multi-record operations.
+```php
+class OrcamentoService {
+    public function create(array $data, $company): Orcamento {
+        return DB::transaction(function () use ($data, $company) { /* logic */ });
+    }
+}
+```
+
+**Authorization**: Manual checks or `abort(403, 'Sem permissão.')`.
+```php
+private function authorizePessoa(Pessoa $pessoa): void {
+    $company = app('current_company');
+    if ($pessoa->company_id !== $company->id) abort(403, 'Sem permissão.');
+}
+```
 
 ### Frontend (Nuxt/TypeScript)
 
-- **Vue 3 Composition API** with `<script setup lang="ts">`
-- Use **Nuxt composables**: `useApi()`, `useApiMutation()`, `useCurrentCompany()`
-- Additional composables: `useCnpjSearch()`, `useCepSearch()`, `useDashboard()`
-- Form validation with **Zod schemas** and `@nuxt/ui` `UForm`
-- Table display uses **TanStack Table** via `@nuxt/ui` `UTable`
-- Modal pattern: `AddModal.vue`, `EditModal.vue`, `DeleteModal.vue` per entity
-- Types defined in `app/types/index.d.ts` - extend there for new entities
-- Utilities in `app/utils/index.ts` - use `formatCurrency()` for BRL values
-- Column visibility: allow users to toggle via `UDropdownMenu`
-- Row selection: use `v-model:row-selection` with `UCheckbox` in column definitions
-- Column filtering: use `v-model:column-filters` with search inputs
-- Pagination: use `getPaginationRowModel()` from `@tanstack/table-core`
-- Toast notifications: `toast.add({ title, color: 'success'|'error' })`
-- Loading states: `const loading = ref(false)` with `:loading="loading"`
-- Route middleware: `admin.ts` guards admin pages, Sanctum `guestOnly` for auth pages
+**Vue 3 Composition API** with `<script setup lang="ts">`.
+
+**Composables**:
+- `useApi<T>(url, options)` - GET with auto company/office headers
+- `useApiMutation()` - Returns `{ post, put, patch, del }`
+- `useCurrentCompany()`, `useCurrentOffice()`, `useDashboard()`
+
+```typescript
+const { data, status, refresh } = useApi<PaginatedResponse<Pessoa>>('/pessoas', { lazy: true })
+const { post, put, del } = useApiMutation()
+```
+
+**Forms with Zod**:
+```typescript
+import * as z from 'zod'
+import type { FormSubmitEvent } from '@nuxt/ui'
+
+const schema = z.object({ tipo: z.enum(['cliente', 'fornecedor']), razao_social: z.string().min(2) })
+
+async function onSubmit(event: FormSubmitEvent<z.output<typeof schema>>) {
+    loading.value = true
+    try {
+        await post('/pessoas', event.data)
+        toast.add({ title: 'Sucesso', color: 'success' })
+    } catch (error) {
+        const err = error as { response?: { _data?: { message?: string } } }
+        toast.add({ title: 'Erro', description: err?.response?._data?.message, color: 'error' })
+    } finally { loading.value = false }
+}
+```
+
+**Tables with TanStack**: `v-model:column-filters`, `v-model:row-selection`, `v-model:pagination`.
+
+**Modal Pattern**: Three modals per entity (`AddModal.vue`, `EditModal.vue`, `DeleteModal.vue`). Use `v-model:open`, emit `@created/@updated/@deleted`, `useTemplateRef('formRef')`.
+
+**Types**: Define in `app/types/index.d.ts`. Use `PaginatedResponse<T>`.
 
 ### Naming Conventions
 
-- **Models**: PascalCase singular (`Pessoa`, `Produto`, `Pedido`, `Invoice`)
-- **Controllers**: PascalCase with `Controller` suffix (`PessoaController`, `Admin\OfficeController`)
-- **Routes**: kebab-case (`/cadastros/pessoas`, `/comercial/pedidos`, `/admin/cobrancas`)
-- **Components**: PascalCase (`AddModal.vue`, `EditModal.vue`)
-- **Database tables**: snake_case plural (`pessoas`, `produtos`, `pedido_itens`, `invoices`)
-- **API endpoints**: snake_case (`/api/pessoas`, `/api/admin/offices`)
-- **Middleware**: camelCase files (`admin.ts`), PascalCase classes (`EnsureAdmin`)
+| Type        | Convention                    | Example                      |
+|-------------|-------------------------------|------------------------------|
+| Models      | PascalCase singular           | `Pessoa`, `Pedido`           |
+| Controllers | PascalCase + Controller       | `PessoaController`           |
+| Routes      | kebab-case                    | `/cadastros/pessoas`         |
+| Components  | PascalCase                    | `AddModal.vue`               |
+| Tables      | snake_case plural             | `pessoas`, `pedido_itens`    |
+| API endpoints| snake_case                   | `/api/pessoas`               |
 
 ### Error Handling
 
-- Backend: return JSON with `message` key and appropriate status code
-- Frontend: catch errors with `catch (e: unknown)`, cast to typed error object
-- Extract error messages: `const err = e as { response?: { _data?: { message?: string } } }` then `err?.response?._data?.message`
-- Display via `toast.add({ color: 'error' })`
+**Backend**: Return JSON with `message` key: `response()->json(['message' => 'Error'], 422)`. Use `abort(403, 'Sem permissão.')` for auth failures.
+
+**Frontend**: Catch errors, extract `err?.response?._data?.message`, show toast.
 
 ### Multi-Tenancy Pattern
 
-- Every query must be scoped to company: `$company->pessoas()` not `Pessoa::all()`
-- Frontend passes `X-Company-Id` header automatically via `useApi()` composable
-- Current company stored in localStorage: `current_company_id`
-- Office-level queries scoped by `$user->office_id` (or `$user->companies()` for company_user role)
-- Admin queries are unscoped (full platform access)
+- Backend: Scope all queries to company: `$company->pessoas()` not `Pessoa::all()`
+- Frontend: `useApi()` auto-adds `X-Company-Id` header
+- Current company in localStorage: `current_company_id`
+
+### Import Organization
+
+**Backend**:
+```php
+namespace App\Http\Controllers;
+
+use App\Http\Requests\StoreOrcamentoRequest;
+use App\Http\Resources\OrcamentoResource;
+use App\Models\Orcamento;
+use App\Services\OrcamentoService;
+use App\Traits\HasPagination;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+```
+
+**Frontend**:
+```typescript
+// Vue built-ins first
+import { computed, h, ref } from 'vue'
+// Type imports
+import type { TableColumn } from '@nuxt/ui'
+import type { Pessoa, PaginatedResponse } from '~/types'
+// Component imports (auto-resolved)
+import { UButton, UBadge } from '#components'
+// Utility imports
+import { getPaginationRowModel } from '@tanstack/table-core'
+```

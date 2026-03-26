@@ -47,10 +47,11 @@ const loading = ref(false)
 const toast = useToast()
 const { post } = useApiMutation()
 const { currentCompany } = useCurrentCompany()
+const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
 
-const { data: pessoasData } = useApi<PaginatedResponse<Pessoa>>('/pessoas', { lazy: true, watch: [() => currentCompany.value?.id] })
-const { data: produtosData } = useApi<PaginatedResponse<Produto>>('/produtos', { lazy: true, watch: [() => currentCompany.value?.id] })
+const { data: pessoasData } = useApi<PaginatedResponse<Pessoa>>('/pessoas', { lazy: true, watch: [computed(() => currentCompany.value?.id)] })
+const { data: produtosData } = useApi<PaginatedResponse<Produto>>('/produtos', { lazy: true, watch: [computed(() => currentCompany.value?.id)] })
 
 const pessoaOptions = computed(() => (pessoasData.value?.data || []).map(p => ({ label: p.razao_social, value: p.id })))
 const produtoOptions = computed(() => (produtosData.value?.data || []).map(p => ({ label: p.descricao, value: p.id })))
@@ -109,7 +110,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     resetForm()
     emit('created')
   } catch (error) {
-    toast.add({ title: 'Erro', description: error?.response?._data?.message || 'Erro ao criar.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao criar.', color: 'error' })
   } finally {
     loading.value = false
   }

@@ -56,7 +56,7 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::create($validated);
 
-        if (!empty($validated['items'])) {
+        if (! empty($validated['items'])) {
             foreach ($validated['items'] as $item) {
                 $invoice->items()->create([
                     'description' => $item['description'],
@@ -149,7 +149,7 @@ class InvoiceController extends Controller
                 ->where('reference', $validated['reference'])
                 ->exists();
 
-            if ($alreadyExists || !$office->subscription) {
+            if ($alreadyExists || ! $office->subscription) {
                 continue;
             }
 

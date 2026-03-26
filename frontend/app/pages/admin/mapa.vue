@@ -31,6 +31,8 @@ const filteredDiretas = computed(() => {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
+        <template #right />
       </UDashboardNavbar>
     </template>
 

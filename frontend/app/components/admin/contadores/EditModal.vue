@@ -10,17 +10,14 @@ const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { put } = useApiMutation()
-const formRef = useTemplateRef('formRef')
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
-  cnpj: z.string().min(14, 'CNPJ inválido'),
+  cnpj: z.string().min(11, 'CPF ou CNPJ inválido'),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   type: z.enum(['contador', 'direct']),
   is_active: z.boolean(),
-  is_reseller: z.boolean(),
-  reseller_commission: z.coerce.number().min(0).max(100),
   notes: z.string().optional()
 })
 
@@ -37,8 +34,6 @@ watch(() => props.office, (office) => {
       phone: office.phone || '',
       type: office.type === 'admin' ? 'contador' : office.type,
       is_active: office.is_active,
-      is_reseller: office.is_reseller,
-      reseller_commission: office.reseller_commission,
       notes: office.notes || ''
     })
     open.value = true
@@ -62,17 +57,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Editar Cadastro"
-    description="Atualize os dados do escritório contábil ou cliente direto."
-    :ui="{ content: 'w-full sm:max-w-2xl', footer: 'justify-end' }"
-  >
+  <UModal v-model:open="open" title="Editar Cadastro" description="Atualize os dados do escritório contábil ou cliente direto.">
     <slot />
 
     <template #body>
       <UForm
-        ref="formRef"
         :schema="schema"
         :state="state"
         class="space-y-4"
@@ -88,8 +77,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UInput v-model="state.name" placeholder="Nome do escritório ou empresa" class="w-full" />
           </UFormField>
 
-          <UFormField label="CNPJ" name="cnpj" required>
-            <UInput v-model="state.cnpj" placeholder="00.000.000/0001-00" class="w-full" />
+          <UFormField label="CPF/CNPJ" name="cnpj" required>
+            <UInput v-model="state.cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" class="w-full" />
           </UFormField>
 
           <UFormField label="Tipo" name="type" required>
@@ -120,41 +109,27 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <USwitch v-model="state.is_active" label="Ativo" />
           </UFormField>
 
-          <UFormField label="É revendedor?" name="is_reseller">
-            <USwitch v-model="state.is_reseller" label="Permite sub-revenda" />
-          </UFormField>
-
-          <UFormField v-if="state.is_reseller" label="Comissão (%)" name="reseller_commission">
-            <UInput
-              v-model="state.reseller_commission"
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              class="w-full"
-            />
-          </UFormField>
-
           <UFormField label="Observações" name="notes" class="sm:col-span-2">
             <UTextarea v-model="state.notes" placeholder="Observações internas..." class="w-full" />
           </UFormField>
         </div>
-      </UForm>
-    </template>
 
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Salvar"
-        color="primary"
-        :loading="loading"
-        @click="formRef?.submit()"
-      />
+        <div class="flex justify-end gap-2">
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="subtle"
+            @click="open = false"
+          />
+          <UButton
+            label="Salvar"
+            color="primary"
+            variant="solid"
+            type="submit"
+            :loading="loading"
+          />
+        </div>
+      </UForm>
     </template>
   </UModal>
 </template>

@@ -16,8 +16,6 @@ class Office extends Model
         'email',
         'is_active',
         'type',
-        'is_reseller',
-        'reseller_commission',
         'parent_office_id',
         'notes',
     ];
@@ -26,8 +24,6 @@ class Office extends Model
     {
         return [
             'is_active' => 'boolean',
-            'is_reseller' => 'boolean',
-            'reseller_commission' => 'decimal:2',
         ];
     }
 

@@ -172,8 +172,12 @@ const actionColumns: TableColumn<QuickAction>[] = [
     <UCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <p class="font-medium text-highlighted">Ações Rápidas</p>
-          <UBadge variant="subtle" color="neutral">{{ currentCompany?.fantasia || currentCompany?.razao_social }}</UBadge>
+          <p class="font-medium text-highlighted">
+            Ações Rápidas
+          </p>
+          <UBadge variant="subtle" color="neutral">
+            {{ currentCompany?.fantasia || currentCompany?.razao_social }}
+          </UBadge>
         </div>
       </template>
 

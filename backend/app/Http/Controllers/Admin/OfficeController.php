@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Office;
 use App\Models\Plan;
-use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -64,8 +63,6 @@ class OfficeController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'type' => 'required|in:contador,direct',
-            'is_reseller' => 'boolean',
-            'reseller_commission' => 'numeric|min:0|max:100',
             'parent_office_id' => 'nullable|exists:offices,id',
             'notes' => 'nullable|string',
             'plan_id' => 'nullable|exists:plans,id',
@@ -73,7 +70,7 @@ class OfficeController extends Controller
 
         $office = Office::create($validated);
 
-        if (!empty($validated['plan_id'])) {
+        if (! empty($validated['plan_id'])) {
             $plan = Plan::findOrFail($validated['plan_id']);
             $office->subscriptions()->create([
                 'plan_id' => $plan->id,
@@ -94,8 +91,6 @@ class OfficeController extends Controller
             'phone' => 'nullable|string|max:20',
             'type' => 'sometimes|in:contador,direct',
             'is_active' => 'boolean',
-            'is_reseller' => 'boolean',
-            'reseller_commission' => 'numeric|min:0|max:100',
             'parent_office_id' => 'nullable|exists:offices,id',
             'notes' => 'nullable|string',
         ]);

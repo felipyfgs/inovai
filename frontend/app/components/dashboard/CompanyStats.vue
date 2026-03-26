@@ -89,8 +89,12 @@ const alerts = computed(() => {
         <UCard v-for="card in cards" :key="card.label">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-muted">{{ card.label }}</p>
-              <p class="text-2xl font-bold mt-1">{{ card.value }}</p>
+              <p class="text-sm text-muted">
+                {{ card.label }}
+              </p>
+              <p class="text-2xl font-bold mt-1">
+                {{ card.value }}
+              </p>
             </div>
             <UIcon :name="card.icon" :class="['size-8', card.color]" />
           </div>

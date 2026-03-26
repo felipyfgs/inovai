@@ -34,19 +34,29 @@ async function handleSubmit() {
 <template>
   <div>
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-highlighted">InovAI</h1>
-      <p class="text-muted mt-2">Recuperação de senha</p>
+      <h1 class="text-3xl font-bold text-highlighted">
+        InovAI
+      </h1>
+      <p class="text-muted mt-2">
+        Recuperação de senha
+      </p>
     </div>
 
     <UCard>
       <template #header>
-        <h2 class="text-lg font-semibold">Esqueceu a senha?</h2>
+        <h2 class="text-lg font-semibold">
+          Esqueceu a senha?
+        </h2>
       </template>
 
       <div v-if="sent" class="text-center py-4">
         <UIcon name="i-lucide-mail-check" class="size-12 text-success mx-auto mb-4" />
-        <p class="text-highlighted font-medium mb-2">E-mail enviado!</p>
-        <p class="text-sm text-muted">Verifique sua caixa de entrada para redefinir sua senha.</p>
+        <p class="text-highlighted font-medium mb-2">
+          E-mail enviado!
+        </p>
+        <p class="text-sm text-muted">
+          Verifique sua caixa de entrada para redefinir sua senha.
+        </p>
       </div>
 
       <form v-else class="flex flex-col gap-4" @submit.prevent="handleSubmit">

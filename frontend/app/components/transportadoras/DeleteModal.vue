@@ -8,6 +8,7 @@ const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { del } = useApiMutation()
+const { extractMessage } = useApiError()
 
 async function onSubmit() {
   loading.value = true
@@ -17,7 +18,7 @@ async function onSubmit() {
     open.value = false
     emit('deleted')
   } catch (error) {
-    toast.add({ title: 'Erro', description: error?.response?._data?.message || 'Erro ao excluir.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao excluir.', color: 'error' })
   } finally {
     loading.value = false
   }

@@ -8,16 +8,13 @@ const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { post } = useApiMutation()
-const formRef = useTemplateRef('formRef')
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
-  cnpj: z.string().min(14, 'CNPJ inválido'),
+  cnpj: z.string().min(11, 'CPF ou CNPJ inválido'),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   type: z.enum(['contador', 'direct']),
-  is_reseller: z.boolean().default(false),
-  reseller_commission: z.coerce.number().min(0).max(100).default(0),
   notes: z.string().optional()
 })
 
@@ -29,8 +26,6 @@ const state = reactive<Partial<Schema>>({
   email: '',
   phone: '',
   type: 'contador',
-  is_reseller: false,
-  reseller_commission: 0,
   notes: ''
 })
 
@@ -41,7 +36,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     toast.add({ title: 'Cadastrado com sucesso', color: 'success' })
     open.value = false
     emit('created')
-    Object.assign(state, { name: '', cnpj: '', email: '', phone: '', type: 'contador', is_reseller: false, reseller_commission: 0, notes: '' })
+    Object.assign(state, { name: '', cnpj: '', email: '', phone: '', type: 'contador', notes: '' })
   } catch (e: unknown) {
     const err = e as { response?: { _data?: { message?: string } } }
     toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao cadastrar.', color: 'error' })
@@ -52,17 +47,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Novo Contador / Cliente"
-    description="Preencha os dados do escritório contábil ou cliente direto."
-    :ui="{ content: 'w-full sm:max-w-2xl', footer: 'justify-end' }"
-  >
+  <UModal v-model:open="open" title="Novo Contador / Cliente" description="Preencha os dados do escritório contábil ou cliente direto.">
     <UButton label="Novo Cadastro" icon="i-lucide-plus" />
 
     <template #body>
       <UForm
-        ref="formRef"
         :schema="schema"
         :state="state"
         class="space-y-4"
@@ -78,8 +67,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UInput v-model="state.name" placeholder="Nome do escritório ou empresa" class="w-full" />
           </UFormField>
 
-          <UFormField label="CNPJ" name="cnpj" required>
-            <UInput v-model="state.cnpj" placeholder="00.000.000/0001-00" class="w-full" />
+          <UFormField label="CPF/CNPJ" name="cnpj" required>
+            <UInput v-model="state.cnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" class="w-full" />
           </UFormField>
 
           <UFormField label="Tipo" name="type" required>
@@ -106,41 +95,27 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <UInput v-model="state.phone" placeholder="(00) 00000-0000" class="w-full" />
           </UFormField>
 
-          <UFormField label="É revendedor?" name="is_reseller" class="sm:col-span-2">
-            <USwitch v-model="state.is_reseller" label="Permite sub-revenda" />
-          </UFormField>
-
-          <UFormField v-if="state.is_reseller" label="Comissão (%)" name="reseller_commission">
-            <UInput
-              v-model="state.reseller_commission"
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              class="w-full"
-            />
-          </UFormField>
-
           <UFormField label="Observações" name="notes" class="sm:col-span-2">
             <UTextarea v-model="state.notes" placeholder="Observações internas..." class="w-full" />
           </UFormField>
         </div>
-      </UForm>
-    </template>
 
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Cadastrar"
-        color="primary"
-        :loading="loading"
-        @click="formRef?.submit()"
-      />
+        <div class="flex justify-end gap-2">
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="subtle"
+            @click="open = false"
+          />
+          <UButton
+            label="Cadastrar"
+            color="primary"
+            variant="solid"
+            type="submit"
+            :loading="loading"
+          />
+        </div>
+      </UForm>
     </template>
   </UModal>
 </template>

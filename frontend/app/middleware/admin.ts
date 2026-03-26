@@ -2,7 +2,12 @@ import type { AuthUser } from '~/types'
 
 export default defineNuxtRouteMiddleware(() => {
   const { user } = useSanctumAuth<AuthUser>()
-  const isAdmin = user.value?.roles?.some(r => r.name === 'admin')
+
+  if (!user.value) {
+    return navigateTo('/login')
+  }
+
+  const isAdmin = user.value.roles?.some((r: { name: string }) => r.name === 'admin') ?? false
 
   if (!isAdmin) {
     return navigateTo('/')

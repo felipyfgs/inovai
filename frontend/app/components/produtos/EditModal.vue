@@ -26,6 +26,7 @@ const open = ref(false)
 const loading = ref(false)
 const toast = useToast()
 const { put } = useApiMutation()
+const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
 
 const state = reactive<Partial<Schema>>({})
@@ -56,7 +57,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     open.value = false
     emit('updated')
   } catch (error) {
-    toast.add({ title: 'Erro', description: error?.response?._data?.message || 'Erro ao atualizar.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao atualizar.', color: 'error' })
   } finally {
     loading.value = false
   }

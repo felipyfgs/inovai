@@ -3,21 +3,23 @@ import type { TableColumn } from '@nuxt/ui'
 import type { Row } from '@tanstack/table-core'
 import { upperFirst } from 'scule'
 import { getPaginationRowModel } from '@tanstack/table-core'
-import type { AppUser, AuthUser, PaginatedResponse } from '~/types'
+import type { AppUser, PaginatedResponse } from '~/types'
 
 import { UAvatar, UButton, UBadge, UDropdownMenu } from '#components'
+
+definePageMeta({ middleware: 'escritorio' })
 
 function getInitials(name: string) {
   return name
     .split(' ')
-    .filter(Boolean)
+    .filter((w): w is NonNullable<string> => Boolean(w))
     .slice(0, 2)
-    .map(w => w[0].toUpperCase())
+    .map(w => w[0]?.toUpperCase() || '')
     .join('')
 }
 
-const { user } = useSanctumAuth<AuthUser>()
-const isAdmin = computed(() => user.value?.roles?.some(r => r.name === 'admin') ?? false)
+const { isPlatformAdmin } = useAccessContext()
+const isEffectiveAdmin = computed(() => isPlatformAdmin.value)
 
 const toast = useToast()
 const { handleError } = useApiError()
@@ -56,44 +58,75 @@ const roleConfig: Record<string, { label: string, color: 'success' | 'warning' |
 }
 
 function getRowItems(row: Row<AppUser>) {
-  return [
-    {
-      type: 'label' as const,
-      label: 'Ações'
-    },
-    {
-      label: 'Editar usuário',
-      icon: 'i-lucide-pencil',
+  const items = []
+
+  if (row.original.is_active) {
+    items.push({
+      label: 'Bloquear usuário',
+      icon: 'i-lucide-ban',
+      color: 'warning' as const,
       onSelect() {
-        editingUser.value = row.original
+        toggleUserActive(row.original)
       }
-    },
-    {
-      type: 'separator' as const
-    },
-    {
-      label: 'Copiar e-mail',
-      icon: 'i-lucide-copy',
+    })
+  } else {
+    items.push({
+      label: 'Desbloquear usuário',
+      icon: 'i-lucide-check-circle',
+      color: 'success' as const,
       onSelect() {
-        navigator.clipboard.writeText(row.original.email)
-        toast.add({
-          title: 'E-mail copiado',
-          description: row.original.email
-        })
+        toggleUserActive(row.original)
       }
-    },
-    {
-      type: 'separator' as const
-    },
-    {
-      label: 'Excluir usuário',
-      icon: 'i-lucide-trash',
-      color: 'error' as const,
-      onSelect() {
-        deletingUser.value = row.original
-      }
+    })
+  }
+
+  items.push({ type: 'separator' as const, label: '' })
+
+  items.push({
+    label: 'Editar usuário',
+    icon: 'i-lucide-pencil',
+    onSelect() {
+      editingUser.value = row.original
     }
-  ]
+  })
+
+  items.push({ type: 'separator' as const, label: '' })
+
+  items.push({
+    label: 'Copiar e-mail',
+    icon: 'i-lucide-copy',
+    onSelect() {
+      navigator.clipboard.writeText(row.original.email)
+      toast.add({
+        title: 'E-mail copiado',
+        description: row.original.email
+      })
+    }
+  })
+
+  items.push({ type: 'separator' as const, label: '' })
+
+  items.push({
+    label: 'Excluir usuário',
+    icon: 'i-lucide-trash',
+    color: 'error' as const,
+    onSelect() {
+      deletingUser.value = row.original
+    }
+  })
+
+  return [items]
+}
+
+async function toggleUserActive(user: AppUser) {
+  const { patch } = useApiMutation()
+  try {
+    const response = await patch<{ message: string }>(`/users/${user.id}/toggle-active`)
+    toast.add({ title: response.message, color: 'success' })
+    refresh()
+  } catch (e: unknown) {
+    handleError(e, 'Erro ao alterar status')
+  }
 }
 
 const columns: TableColumn<AppUser>[] = [
@@ -179,7 +212,7 @@ const roleOptions = computed(() => {
     { label: 'Todos', value: 'all' },
     { label: 'Empresário', value: 'company_user' }
   ]
-  if (isAdmin.value) {
+  if (isEffectiveAdmin.value) {
     base.push(
       { label: 'Contador', value: 'accountant' },
       { label: 'Admin', value: 'admin' }
@@ -212,6 +245,8 @@ async function confirmDelete() {
         </template>
 
         <template #right>
+          <BackToAdmin />
+          <CompanySelector />
           <UsuariosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

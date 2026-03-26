@@ -11,6 +11,7 @@ type ApiOptions = {
 
 export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
   const { currentCompany } = useCurrentCompany()
+  const { currentOffice } = useCurrentOffice()
   const { $sanctumClient } = useNuxtApp()
 
   const { lazy, server, query, headers: extraHeaders, watch: watchOption } = options
@@ -20,10 +21,15 @@ export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
     if (currentCompany.value?.id) {
       h['X-Company-Id'] = String(currentCompany.value.id)
     }
+    if (currentOffice.value?.id) {
+      h['X-Office-Id'] = String(currentOffice.value.id)
+    }
     return h
   }
 
-  const watchSources: Ref[] = []
+  const companyId = computed(() => currentCompany.value?.id ?? 'none')
+
+  const watchSources: Ref[] = [companyId]
   if (isRef(query)) watchSources.push(query as Ref)
   if (isRef(url)) watchSources.push(url as Ref)
   if (watchOption?.length) watchSources.push(...watchOption)
@@ -31,7 +37,7 @@ export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
   const asyncDataOptions: AsyncDataOptions<T> = {
     lazy: lazy ?? false,
     server: server ?? false,
-    watch: watchSources.length ? watchSources : undefined
+    watch: watchSources
   }
 
   const resolvedUrl = typeof url === 'string' ? url : url.value
@@ -55,12 +61,16 @@ export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
 
 export function useApiMutation() {
   const { currentCompany } = useCurrentCompany()
+  const { currentOffice } = useCurrentOffice()
   const { $sanctumClient } = useNuxtApp()
 
   function getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {}
     if (currentCompany.value?.id) {
       headers['X-Company-Id'] = String(currentCompany.value.id)
+    }
+    if (currentOffice.value?.id) {
+      headers['X-Office-Id'] = String(currentOffice.value.id)
     }
     return headers
   }

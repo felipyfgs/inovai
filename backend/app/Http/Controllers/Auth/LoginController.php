@@ -17,7 +17,7 @@ class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        if (! Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
                 'email' => ['As credenciais informadas estão incorretas.'],
             ]);
@@ -25,7 +25,7 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             Auth::logout();
             throw ValidationException::withMessages([
                 'email' => ['Sua conta está desativada. Entre em contato com o suporte.'],

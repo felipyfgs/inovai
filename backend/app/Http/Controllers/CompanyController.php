@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\Office;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,9 +13,16 @@ class CompanyController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $officeId = $request->header('X-Office-Id');
 
         if ($user->hasRole('admin')) {
-            $companies = Company::with('office')->paginate(20);
+            if ($officeId) {
+                $companies = Company::with('office')
+                    ->where('office_id', $officeId)
+                    ->paginate($request->get('per_page', 200));
+            } else {
+                $companies = Company::with('office')->paginate(20);
+            }
         } elseif ($user->hasRole('company_user')) {
             $companies = $user->companies()->with('office')
                 ->paginate($request->get('per_page', 200));
@@ -50,9 +58,22 @@ class CompanyController extends Controller
         ]);
 
         $user = $request->user();
-        $validated['office_id'] = $user->office_id;
+        $officeId = $request->header('X-Office-Id');
+        $validated['office_id'] = $officeId ?? $user->office_id;
 
-        if (!$user->hasRole('admin')) {
+        if ($user->hasRole('admin') && $officeId) {
+            $office = Office::with('subscription.plan')->find($officeId);
+            $maxCompanies = $office?->subscription?->plan?->max_companies;
+
+            if ($maxCompanies !== null) {
+                $currentCount = Company::where('office_id', $officeId)->count();
+                if ($currentCount >= $maxCompanies) {
+                    return response()->json([
+                        'message' => "Limite de {$maxCompanies} empresa(s) atingido para o seu plano.",
+                    ], 422);
+                }
+            }
+        } elseif (! $user->hasRole('admin')) {
             $office = $user->office()->with('subscription.plan')->first();
             $maxCompanies = $office?->subscription?->plan?->max_companies;
 
@@ -60,7 +81,7 @@ class CompanyController extends Controller
                 $currentCount = Company::where('office_id', $user->office_id)->count();
                 if ($currentCount >= $maxCompanies) {
                     return response()->json([
-                        'message' => "Limite de {$maxCompanies} empresa(s) atingido para o seu plano."
+                        'message' => "Limite de {$maxCompanies} empresa(s) atingido para o seu plano.",
                     ], 422);
                 }
             }
@@ -88,7 +109,7 @@ class CompanyController extends Controller
         $validated = $request->validate([
             'razao_social' => ['sometimes', 'string', 'max:255'],
             'fantasia' => ['nullable', 'string', 'max:255'],
-            'cnpj' => ['sometimes', 'string', 'max:18', 'unique:companies,cnpj,' . $company->id],
+            'cnpj' => ['sometimes', 'string', 'max:18', 'unique:companies,cnpj,'.$company->id],
             'ie' => ['nullable', 'string', 'max:20'],
             'im' => ['nullable', 'string', 'max:20'],
             'crt' => ['nullable', 'integer', 'in:1,2,3'],
@@ -134,7 +155,7 @@ class CompanyController extends Controller
         // Validate certificate
         $certData = [];
         $pfxRaw = base64_decode($pfxContent);
-        if (!openssl_pkcs12_read($pfxRaw, $certData, $request->input('senha'))) {
+        if (! openssl_pkcs12_read($pfxRaw, $certData, $request->input('senha'))) {
             return response()->json(['message' => 'Certificado inválido ou senha incorreta.'], 422);
         }
 
@@ -180,7 +201,7 @@ class CompanyController extends Controller
         $user = User::findOrFail($validated['user_id']);
 
         // Check if user belongs to same office (for office_user)
-        if (!$request->user()->hasRole('admin') && $user->office_id !== $request->user()->office_id) {
+        if (! $request->user()->hasRole('admin') && $user->office_id !== $request->user()->office_id) {
             return response()->json(['message' => 'Usuário não pertence ao seu escritório.'], 403);
         }
 
@@ -188,7 +209,7 @@ class CompanyController extends Controller
         $company->users()->syncWithoutDetaching([$user->id]);
 
         // Assign company_user role if not already has it
-        if (!$user->hasRole('company_user')) {
+        if (! $user->hasRole('company_user')) {
             $user->assignRole('company_user');
         }
 
@@ -215,7 +236,16 @@ class CompanyController extends Controller
             return;
         }
 
-        if ($company->office_id !== $user->office_id) {
+        if ($user->hasAnyRole(['office_user', 'accountant'])) {
+            if ($company->office_id !== $user->office_id) {
+                abort(403, 'Sem permissão para acessar esta empresa.');
+            }
+
+            return;
+        }
+
+        // company_user: must be attached to the company
+        if (! $user->companies()->where('companies.id', $company->id)->exists()) {
             abort(403, 'Sem permissão para acessar esta empresa.');
         }
     }

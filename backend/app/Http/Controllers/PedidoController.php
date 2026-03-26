@@ -33,7 +33,7 @@ class PedidoController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
-                  ->orWhereHas('pessoa', fn ($p) => $p->where('razao_social', 'ilike', "%{$search}%"));
+                    ->orWhereHas('pessoa', fn ($p) => $p->where('razao_social', 'ilike', "%{$search}%"));
             });
         }
 
@@ -51,6 +51,7 @@ class PedidoController extends Controller
     public function show(Pedido $pedido): JsonResponse
     {
         $this->authorizeResource($pedido);
+
         return response()->json(PedidoResource::make($pedido->load(['pessoa', 'itens.produto', 'orcamento'])));
     }
 
@@ -76,6 +77,7 @@ class PedidoController extends Controller
         }
 
         $pedido->delete();
+
         return response()->json(['message' => 'Pedido removido com sucesso.']);
     }
 

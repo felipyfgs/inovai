@@ -12,7 +12,7 @@ class EnsureActiveSubscription
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -23,19 +23,19 @@ class EnsureActiveSubscription
 
         $office = $user->office;
 
-        if (!$office) {
+        if (! $office) {
             return response()->json(['message' => 'Usuário sem escritório vinculado.'], 403);
         }
 
         // Check if office is active
-        if (!$office->is_active) {
+        if (! $office->is_active) {
             return response()->json(['message' => 'Escritório inativo.'], 403);
         }
 
         // Check subscription
         $subscription = $office->subscription;
 
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json(['message' => 'Nenhuma assinatura encontrada.'], 403);
         }
 
@@ -45,8 +45,9 @@ class EnsureActiveSubscription
                 'expired' => 'Assinatura expirada.',
                 'trial' => 'Período de trial encerrado.',
             ];
+
             return response()->json([
-                'message' => $statusMessages[$subscription->status] ?? 'Assinatura inativa.'
+                'message' => $statusMessages[$subscription->status] ?? 'Assinatura inativa.',
             ], 403);
         }
 

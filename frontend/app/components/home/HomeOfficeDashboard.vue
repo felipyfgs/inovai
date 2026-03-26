@@ -107,8 +107,12 @@ const alerts = computed(() => {
 
     <UCard v-if="!stats?.total_empresas" :ui="{ body: 'text-center py-12' }">
       <UIcon name="i-lucide-building-2" class="size-12 text-muted mx-auto mb-4" />
-      <h3 class="text-lg font-semibold text-highlighted mb-2">Bem-vindo ao InovAI!</h3>
-      <p class="text-muted mb-6">Comece cadastrando sua primeira empresa para emitir notas fiscais.</p>
+      <h3 class="text-lg font-semibold text-highlighted mb-2">
+        Bem-vindo ao InovAI!
+      </h3>
+      <p class="text-muted mb-6">
+        Comece cadastrando sua primeira empresa para emitir notas fiscais.
+      </p>
       <UButton
         label="Cadastrar Empresa"
         icon="i-lucide-plus"

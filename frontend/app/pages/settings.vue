@@ -20,6 +20,11 @@ const links = [[{
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
+        <template #right>
+          <BackToAdmin />
+          <CompanySelector />
+        </template>
       </UDashboardNavbar>
 
       <UDashboardToolbar>

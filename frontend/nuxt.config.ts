@@ -1,6 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  ssr: false,
 
   modules: [
     '@nuxt/eslint',
@@ -8,6 +7,7 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     'nuxt-auth-sanctum'
   ],
+  ssr: false,
 
   devtools: {
     enabled: false
@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     }
   },
 
+  compatibilityDate: '2024-07-11',
+
   vite: {
     optimizeDeps: {
       include: [
@@ -40,8 +42,6 @@ export default defineNuxtConfig({
       ]
     }
   },
-
-  compatibilityDate: '2024-07-11',
 
   eslint: {
     config: {

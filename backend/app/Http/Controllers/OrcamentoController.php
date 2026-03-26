@@ -33,7 +33,7 @@ class OrcamentoController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
-                  ->orWhereHas('pessoa', fn ($p) => $p->where('razao_social', 'ilike', "%{$search}%"));
+                    ->orWhereHas('pessoa', fn ($p) => $p->where('razao_social', 'ilike', "%{$search}%"));
             });
         }
 
@@ -51,6 +51,7 @@ class OrcamentoController extends Controller
     public function show(Orcamento $orcamento): JsonResponse
     {
         $this->authorizeResource($orcamento);
+
         return response()->json(OrcamentoResource::make($orcamento->load(['pessoa', 'itens.produto'])));
     }
 
@@ -71,6 +72,7 @@ class OrcamentoController extends Controller
     {
         $this->authorizeResource($orcamento);
         $orcamento->delete();
+
         return response()->json(['message' => 'Orçamento removido com sucesso.']);
     }
 
