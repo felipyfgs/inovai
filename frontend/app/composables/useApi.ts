@@ -18,11 +18,13 @@ export function useApi<T>(url: string | Ref<string>, options: ApiOptions = {}) {
 
   const getHeaders = (): Record<string, string> => {
     const h: Record<string, string> = {}
-    if (currentCompany.value?.id) {
-      h['X-Company-Id'] = String(currentCompany.value.id)
+    const companyId = currentCompany.value?.id
+    const officeId = currentOffice.value?.id
+    if (companyId && !isNaN(Number(companyId))) {
+      h['X-Company-Id'] = String(companyId)
     }
-    if (currentOffice.value?.id) {
-      h['X-Office-Id'] = String(currentOffice.value.id)
+    if (officeId && !isNaN(Number(officeId))) {
+      h['X-Office-Id'] = String(officeId)
     }
     return h
   }
@@ -66,11 +68,13 @@ export function useApiMutation() {
 
   function getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {}
-    if (currentCompany.value?.id) {
-      headers['X-Company-Id'] = String(currentCompany.value.id)
+    const companyId = currentCompany.value?.id
+    const officeId = currentOffice.value?.id
+    if (companyId && !isNaN(Number(companyId))) {
+      headers['X-Company-Id'] = String(companyId)
     }
-    if (currentOffice.value?.id) {
-      headers['X-Office-Id'] = String(currentOffice.value.id)
+    if (officeId && !isNaN(Number(officeId))) {
+      headers['X-Office-Id'] = String(officeId)
     }
     return headers
   }

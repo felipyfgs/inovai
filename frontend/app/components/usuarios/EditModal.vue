@@ -52,7 +52,7 @@ const userCompanies = ref<Company[]>([])
 async function fetchUserCompanies(userId: number) {
   try {
     const { $sanctumClient } = useNuxtApp()
-    const data = await $sanctumClient<Company[]>(`/api/users/${userId}/companies`)
+    const data = await $sanctumClient<Company[]>(`/users/${userId}/companies`)
     userCompanies.value = data ?? []
   } catch {
     userCompanies.value = []

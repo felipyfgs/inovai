@@ -131,6 +131,21 @@ class OfficeController extends Controller
         return response()->json($subscription->load('plan'));
     }
 
+    public function removePlan(Office $office): JsonResponse
+    {
+        $activeSubscription = $office->subscriptions()->where('status', 'active')->first();
+
+        if (! $activeSubscription) {
+            return response()->json(['message' => 'Este escritório não possui um plano ativo.'], 422);
+        }
+
+        $office->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
+
+        $office->refresh();
+
+        return response()->json($office->load('subscription.plan'));
+    }
+
     public function map(): JsonResponse
     {
         $contadores = Office::with(['companies' => fn ($q) => $q->select('id', 'office_id', 'razao_social', 'fantasia', 'cnpj', 'ambiente', 'is_active'), 'subscription.plan'])

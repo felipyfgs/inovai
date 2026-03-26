@@ -39,7 +39,9 @@ class Office extends Model
 
     public function subscription(): HasOne
     {
-        return $this->hasOne(Subscription::class)->latestOfMany();
+        return $this->hasOne(Subscription::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('status', 'active');
+        });
     }
 
     public function subscriptions(): HasMany

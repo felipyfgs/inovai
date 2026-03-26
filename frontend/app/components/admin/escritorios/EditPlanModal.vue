@@ -4,7 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { Office, Plan } from '~/types'
 
 const props = defineProps<{ office: Office }>()
-const emit = defineEmits<{ assigned: [] }>()
+const emit = defineEmits<{ updated: [] }>()
 
 const open = defineModel<boolean>('open', { default: false })
 const loading = ref(false)
@@ -30,10 +30,14 @@ const state = reactive<Partial<Schema>>({
 })
 
 watch(open, (isOpen) => {
-  if (isOpen && props.office.subscription?.plan) {
-    state.plan_id = props.office.subscription.plan.id
-  } else {
-    state.plan_id = undefined
+  if (isOpen && props.office.subscription) {
+    state.plan_id = props.office.subscription.plan?.id
+    state.starts_at = props.office.subscription.starts_at
+      ? new Date(props.office.subscription.starts_at).toISOString().split('T')[0]
+      : ''
+    state.ends_at = props.office.subscription.ends_at
+      ? new Date(props.office.subscription.ends_at).toISOString().split('T')[0]
+      : ''
   }
 })
 
@@ -45,11 +49,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     if (event.data.ends_at) data.ends_at = event.data.ends_at
 
     await post(`/admin/offices/${props.office.id}/assign-plan`, data)
-    toast.add({ title: 'Plano atribuído com sucesso', color: 'success' })
+    toast.add({ title: 'Plano atualizado com sucesso', color: 'success' })
     open.value = false
-    emit('assigned')
+    emit('updated')
   } catch (error) {
-    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao atribuir plano.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao atualizar plano.', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -59,8 +63,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 <template>
   <UModal
     v-model:open="open"
-    title="Atribuir Plano"
-    description="Selecione um plano para este escritório."
+    title="Editar Plano"
+    description="Altere o plano deste escritório."
     :ui="{ content: 'w-full sm:max-w-lg', footer: 'justify-end' }"
   >
     <template #body>
@@ -100,7 +104,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         @click="close"
       />
       <UButton
-        label="Atribuir Plano"
+        label="Salvar"
         color="primary"
         :loading="loading"
         @click="formRef?.submit()"

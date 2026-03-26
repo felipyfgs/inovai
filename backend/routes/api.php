@@ -103,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Offices (contadores + diretas)
         Route::get('offices/map', [AdminOfficeController::class, 'map']);
         Route::post('offices/{office}/assign-plan', [AdminOfficeController::class, 'assignPlan']);
+        Route::delete('offices/{office}/plan', [AdminOfficeController::class, 'removePlan']);
         Route::apiResource('offices', AdminOfficeController::class);
 
         // Invoices (cobranças)
