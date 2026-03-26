@@ -1,89 +1,13 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
-import type { Row } from '@tanstack/table-core'
-import { UBadge, UButton, UDropdownMenu } from '#components'
 import type { Plan } from '~/types'
 
 definePageMeta({ middleware: 'admin' })
-
-const toast = useToast()
 
 const { data, refresh } = useApi<Plan[]>('/admin/plans', { lazy: true })
 
 const plans = computed(() => data.value || [])
 
-const editingPlan = ref<Plan | null>(null)
 const deletingPlan = ref<Plan | null>(null)
-
-function getRowItems(row: Row<Plan>) {
-  return [
-    { type: 'label' as const, label: 'Ações' },
-    {
-      label: 'Editar',
-      icon: 'i-lucide-pencil',
-      onSelect() { editingPlan.value = row.original }
-    },
-    { type: 'separator' as const },
-    {
-      label: 'Excluir',
-      icon: 'i-lucide-trash',
-      color: 'error' as const,
-      onSelect() { deletingPlan.value = row.original }
-    }
-  ]
-}
-
-const _columns: TableColumn<Plan>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Plano',
-    cell: ({ row }) => h('div', [
-      h('p', { class: 'font-medium text-highlighted' }, row.original.name),
-      row.original.description ? h('p', { class: 'text-sm text-muted' }, row.original.description) : null
-    ])
-  },
-  {
-    accessorKey: 'price',
-    header: 'Preço',
-    cell: ({ row }) => h('span', { class: 'font-medium' }, `R$ ${Number(row.original.price).toFixed(2).replace('.', ',')}`)
-  },
-  {
-    accessorKey: 'max_companies',
-    header: 'Empresas',
-    cell: ({ row }) => h('span', {}, row.original.max_companies === 999 ? 'Ilimitado' : row.original.max_companies)
-  },
-  {
-    accessorKey: 'max_nfs_month',
-    header: 'NFes/Mês',
-    cell: ({ row }) => h('span', {}, row.original.max_nfs_month === 0 ? 'Ilimitado' : row.original.max_nfs_month)
-  },
-  {
-    accessorKey: 'is_active',
-    header: 'Status',
-    cell: ({ row }) => h(UBadge, { variant: 'subtle', color: row.original.is_active ? 'success' : 'error' }, () => row.original.is_active ? 'Ativo' : 'Inativo')
-  },
-  {
-    id: 'actions',
-    cell: ({ row }) => h('div', { class: 'text-right' }, h(UDropdownMenu, {
-      content: { align: 'end' },
-      items: getRowItems(row)
-    }, () => h(UButton, { icon: 'i-lucide-ellipsis-vertical', color: 'neutral', variant: 'ghost', class: 'ml-auto' })))
-  }
-]
-
-async function handleDelete() {
-  if (!deletingPlan.value) return
-  const { del } = useApiMutation()
-  try {
-    await del(`/admin/plans/${deletingPlan.value.id}`)
-    toast.add({ title: 'Plano removido com sucesso', color: 'success' })
-    deletingPlan.value = null
-    refresh()
-  } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string } } }
-    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao remover', color: 'error' })
-  }
-}
 </script>
 
 <template>
@@ -171,25 +95,9 @@ async function handleDelete() {
     </template>
   </UDashboardPanel>
 
-  <UModal
-    :open="!!deletingPlan"
-    title="Confirmar exclusão"
-    description="Esta ação não pode ser desfeita."
-    @update:open="(v) => { if (!v) deletingPlan = null }"
-  >
-    <template #body>
-      <p>
-        Deseja excluir o plano <strong>{{ deletingPlan?.name }}</strong>? Esta ação não pode ser desfeita.
-      </p>
-    </template>
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close(); deletingPlan = null"
-      />
-      <UButton label="Excluir" color="error" @click="handleDelete" />
-    </template>
-  </UModal>
+  <AdminPlanosDeleteModal
+    v-if="deletingPlan"
+    :plan="deletingPlan"
+    @deleted="() => { deletingPlan = null; refresh() }"
+  />
 </template>

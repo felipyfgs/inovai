@@ -68,6 +68,15 @@ export interface Office {
   cnpj: string | null
   phone: string | null
   email: string | null
+  logradouro: string | null
+  numero: string | null
+  complemento: string | null
+  bairro: string | null
+  municipio: string | null
+  municipio_ibge: string | null
+  uf: string | null
+  cep: string | null
+  ie: string | null
   is_active: boolean
   type: 'admin' | 'contador' | 'direct'
   is_reseller: boolean

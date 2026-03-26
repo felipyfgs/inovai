@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Company, Office, PaginatedResponse } from '~/types'
 
 const props = defineProps<{ officeId?: number }>()
 const emit = defineEmits<{ created: [] }>()
@@ -11,19 +10,13 @@ const loading = ref(false)
 const toast = useToast()
 const { post } = useApiMutation()
 const formRef = useTemplateRef('formRef')
-const { effectiveRole } = useAccessContext()
-const isEffectiveAdmin = computed(() => effectiveRole.value === 'platform_admin')
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   email: z.string().email('E-mail inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   password_confirmation: z.string(),
-  phone: z.string().optional(),
-  role: z.enum(['admin', 'office_user', 'accountant', 'company_user']),
-  office_id: z.coerce.number().optional(),
-  is_active: z.boolean().default(true),
-  company_ids: z.array(z.coerce.number()).optional()
+  phone: z.string().optional()
 }).refine(data => data.password === data.password_confirmation, {
   message: 'Senhas não conferem',
   path: ['password_confirmation']
@@ -36,63 +29,23 @@ const state = reactive<Partial<Schema>>({
   email: '',
   password: '',
   password_confirmation: '',
-  phone: '',
-  role: 'company_user',
-  is_active: true,
-  company_ids: []
-})
-
-const { data: companiesData } = useApi<PaginatedResponse<Company>>('/companies', {
-  lazy: true,
-  query: { per_page: 200 }
-})
-
-const companies = computed(() => companiesData.value?.data ?? [])
-
-const offices = ref<Office[]>([])
-
-if (isEffectiveAdmin.value) {
-  const { data: officesData } = useApi<PaginatedResponse<Office>>('/admin/offices', {
-    lazy: true,
-    query: { per_page: 200 }
-  })
-  watch(officesData, (data) => {
-    offices.value = data?.data ?? []
-  })
-}
-
-watch(open, (isOpen) => {
-  if (isOpen && isEffectiveAdmin.value && props.officeId) {
-    state.office_id = props.officeId
-  }
-})
-
-const availableRoles = computed(() => {
-  if (isEffectiveAdmin.value) {
-    return [
-      { label: 'Admin', value: 'admin' },
-      { label: 'Contador', value: 'accountant' },
-      { label: 'Empresário', value: 'company_user' }
-    ]
-  }
-  return [{ label: 'Empresário', value: 'company_user' }]
+  phone: ''
 })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (!props.officeId) return
   loading.value = true
   try {
-    const payload: Record<string, unknown> = { ...event.data }
-    if (!isEffectiveAdmin.value) {
-      delete payload.office_id
-    }
-    if (event.data.role !== 'company_user') {
-      delete payload.company_ids
-    }
-    await post('/users', payload)
+    await post('/users', {
+      ...event.data,
+      role: 'accountant',
+      office_id: props.officeId,
+      is_active: true
+    })
     toast.add({ title: 'Usuário criado com sucesso', color: 'success' })
     open.value = false
     emit('created')
-    resetForm()
+    Object.assign(state, { name: '', email: '', password: '', password_confirmation: '', phone: '' })
   } catch (e: unknown) {
     const err = e as { response?: { _data?: { message?: string } } }
     toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao criar usuário.', color: 'error' })
@@ -100,20 +53,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     loading.value = false
   }
 }
-
-function resetForm() {
-  Object.assign(state, {
-    name: '', email: '', password: '', password_confirmation: '',
-    phone: '', role: 'company_user', is_active: true, company_ids: []
-  })
-}
 </script>
 
 <template>
   <UModal
     v-model:open="open"
     title="Novo Usuário"
-    description="Preencha os dados para criar um novo usuário."
+    description="Adicione um contador ao escritório."
     :ui="{ content: 'w-full sm:max-w-lg', body: 'max-h-[75vh] overflow-y-auto', footer: 'justify-end shrink-0' }"
   >
     <UButton
@@ -180,7 +126,7 @@ function resetForm() {
             />
           </UFormField>
 
-          <UFormField name="phone" label="Telefone">
+          <UFormField name="phone" label="Telefone" class="sm:col-span-2">
             <UInput
               v-model="state.phone"
               placeholder="(00) 00000-0000"
@@ -188,39 +134,7 @@ function resetForm() {
               class="w-full"
             />
           </UFormField>
-
-          <UFormField name="role" label="Perfil" required>
-            <USelect v-model="state.role" :items="availableRoles" class="w-full" />
-          </UFormField>
         </div>
-
-        <UFormField
-          v-if="isEffectiveAdmin && !props.officeId && (state.role === 'office_user' || state.role === 'accountant')"
-          name="office_id"
-          label="Escritório"
-          required
-        >
-          <USelect
-            v-model="state.office_id"
-            :items="offices.map(o => ({ label: o.name, value: o.id }))"
-            placeholder="Selecione o escritório"
-            class="w-full"
-          />
-        </UFormField>
-
-        <UFormField v-if="state.role === 'company_user'" name="company_ids" label="Empresas">
-          <USelect
-            v-model="state.company_ids"
-            :items="companies.map(c => ({ label: c.fantasia || c.razao_social, value: c.id }))"
-            multiple
-            placeholder="Selecione as empresas"
-            class="w-full"
-          />
-        </UFormField>
-
-        <UFormField name="is_active">
-          <UCheckbox v-model="state.is_active" label="Usuário ativo" />
-        </UFormField>
       </UForm>
     </template>
 

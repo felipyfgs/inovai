@@ -2,11 +2,14 @@
 import type { TableColumn, NavigationMenuItem } from '@nuxt/ui'
 import type { Office, Company, Invoice, User } from '~/types'
 
+const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const UDropdownMenu = resolveComponent('UDropdownMenu')
+
 definePageMeta({ middleware: 'admin' })
 
 const route = useRoute()
 const router = useRouter()
-const toast = useToast()
 
 const officeId = computed(() => Number(route.params.id))
 const officeUrl = computed(() => `/admin/offices/${officeId.value}`)
@@ -19,75 +22,60 @@ const { data: office, status, refresh } = useApi<Office>(officeUrl, {
   lazy: false
 })
 
-const selectedTab = ref<'empresas' | 'faturas' | 'usuarios'>('empresas')
+const selectedTab = ref('escritorio')
 
 const showAssignPlanModal = ref(false)
 const showEditPlanModal = ref(false)
-const showDeletePlanModal = ref(false)
-const loading = ref(false)
+const deletingPlan = ref(false)
 
-const { del: apiDelete } = useApiMutation()
-
-const links = computed<NavigationMenuItem[][]>(() => [[
-  {
-    label: 'Empresas',
-    icon: 'i-lucide-building',
-    active: selectedTab.value === 'empresas',
-    onSelect: (e?: Event) => {
-      e?.preventDefault?.()
-      selectedTab.value = 'empresas'
-    }
-  },
-  {
-    label: 'Faturas',
-    icon: 'i-lucide-file-text',
-    active: selectedTab.value === 'faturas',
-    onSelect: (e?: Event) => {
-      e?.preventDefault?.()
-      selectedTab.value = 'faturas'
-    }
-  },
-  {
-    label: 'Usuários',
-    icon: 'i-lucide-users',
-    active: selectedTab.value === 'usuarios',
-    onSelect: (e?: Event) => {
-      e?.preventDefault?.()
-      selectedTab.value = 'usuarios'
-    }
-  }
-]])
+const editingUser = ref<User | null>(null)
 
 const companies = computed(() => office.value?.companies || [])
 const invoices = computed(() => office.value?.invoices || [])
 const users = computed(() => office.value?.users || [])
 
-const statCards = computed(() => [
-  {
-    label: 'Empresas',
-    value: companies.value.length,
-    icon: 'i-lucide-building',
-    color: 'text-primary'
-  },
-  {
-    label: 'Usuários',
-    value: users.value.length,
-    icon: 'i-lucide-users',
-    color: 'text-info'
-  },
-  {
-    label: 'Plano',
-    value: office.value?.subscription?.plan?.name || '—',
-    icon: 'i-lucide-crown',
-    color: 'text-warning'
-  },
-  {
-    label: 'Valor',
-    value: `R$ ${Number(office.value?.subscription?.plan?.price || 0).toFixed(2).replace('.', ',')}/mês`,
-    icon: 'i-lucide-dollar-sign',
-    color: 'text-success'
+const subscriptionStatus = computed(() => {
+  const s = office.value?.subscription?.status
+  const colors: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+    active: 'success',
+    trial: 'warning',
+    cancelled: 'error',
+    expired: 'error'
   }
-])
+  const labels: Record<string, string> = {
+    active: 'Ativo',
+    trial: 'Trial',
+    cancelled: 'Cancelado',
+    expired: 'Expirado'
+  }
+  return {
+    label: labels[s || ''] || 'Sem plano',
+    color: (colors[s || ''] || 'info') as 'success' | 'warning' | 'error' | 'info'
+  }
+})
+
+const tableUi = {
+  base: 'table-fixed border-separate border-spacing-0',
+  thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
+  tbody: '[&>tr]:last:[&>td]:border-b-0',
+  th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
+  td: 'border-b border-default'
+}
+
+const companySearch = ref('')
+const companyAmbienteFilter = ref('all')
+
+const filteredCompanies = computed(() => {
+  let list = companies.value
+  if (companySearch.value) {
+    const q = companySearch.value.toLowerCase()
+    list = list.filter(c => c.razao_social.toLowerCase().includes(q) || c.fantasia?.toLowerCase().includes(q) || c.cnpj.includes(q))
+  }
+  if (companyAmbienteFilter.value !== 'all') {
+    list = list.filter(c => c.ambiente === companyAmbienteFilter.value)
+  }
+  return list
+})
 
 const companyColumns: TableColumn<Company>[] = [
   {
@@ -109,15 +97,28 @@ const companyColumns: TableColumn<Company>[] = [
     cell: ({ row }) => {
       const labels = { producao: 'Prod', homologacao: 'Homol' }
       const colors = { producao: 'success', homologacao: 'warning' }
-      return h('span', { class: `text-${colors[row.original.ambiente as keyof typeof colors] || 'info'}` }, labels[row.original.ambiente as keyof typeof labels] || row.original.ambiente)
+      return h(UBadge, { variant: 'subtle', color: (colors[row.original.ambiente as keyof typeof colors] || 'info') as 'success' | 'warning' | 'info' }, () => labels[row.original.ambiente as keyof typeof labels] || row.original.ambiente)
     }
   },
   {
     accessorKey: 'is_active',
     header: 'Status',
-    cell: ({ row }) => h('span', { class: row.original.is_active ? 'text-success' : 'text-error' }, row.original.is_active ? 'Ativo' : 'Inativo')
+    cell: ({ row }) => h(UBadge, { variant: 'subtle', color: row.original.is_active ? 'success' : 'error' }, () => row.original.is_active ? 'Ativo' : 'Inativo')
   }
 ]
+
+const invoiceStatusFilter = ref('all')
+const { put } = useApiMutation()
+
+async function markAsPaid(invoice: Invoice) {
+  try {
+    await put(`/admin/invoices/${invoice.id}`, { status: 'paid' })
+    useAppToast().success('Fatura marcada como paga')
+    refresh()
+  } catch {
+    useAppToast().error('Erro ao atualizar fatura')
+  }
+}
 
 const invoiceColumns: TableColumn<Invoice>[] = [
   {
@@ -128,12 +129,12 @@ const invoiceColumns: TableColumn<Invoice>[] = [
   {
     accessorKey: 'amount',
     header: 'Valor',
-    cell: ({ row }) => h('span', { class: 'font-medium' }, `R$ ${Number(row.original.amount).toFixed(2).replace('.', ',')}`)
+    cell: ({ row }) => h('span', { class: 'font-medium' }, formatCurrency(row.original.amount))
   },
   {
     accessorKey: 'due_at',
     header: 'Vencimento',
-    cell: ({ row }) => h('span', {}, row.original.due_at ? new Date(row.original.due_at).toLocaleDateString('pt-BR') : '—')
+    cell: ({ row }) => row.original.due_at ? new Date(row.original.due_at).toLocaleDateString('pt-BR') : '—'
   },
   {
     accessorKey: 'paid_at',
@@ -156,10 +157,59 @@ const invoiceColumns: TableColumn<Invoice>[] = [
         overdue: 'Vencido',
         cancelled: 'Cancelado'
       }
-      return h('span', { class: `text-${colors[row.original.status] || 'info'}` }, labels[row.original.status] || row.original.status)
+      return h(UBadge, { variant: 'subtle', color: colors[row.original.status] || 'info' }, () => labels[row.original.status] || row.original.status)
+    }
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => {
+      const items = [
+        { type: 'label' as const, label: 'Ações' },
+        ...(row.original.status === 'pending' || row.original.status === 'overdue'
+          ? [{
+              label: 'Marcar como pago',
+              icon: 'i-lucide-check-circle',
+              onSelect: () => markAsPaid(row.original)
+            }]
+          : [])
+      ]
+      if (items.length <= 1) return null
+      return h('div', { class: 'text-right' }, h(UDropdownMenu, {
+        content: { align: 'end' },
+        items
+      }, () => h(UButton, { icon: 'i-lucide-ellipsis-vertical', color: 'neutral', variant: 'ghost', class: 'ml-auto' })))
     }
   }
 ]
+
+const userSearch = ref('')
+
+const filteredUsers = computed(() => {
+  if (!userSearch.value) return users.value
+  const q = userSearch.value.toLowerCase()
+  return users.value.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+})
+
+async function toggleUserActive(user: User) {
+  const { patch } = useApiMutation()
+  try {
+    await patch(`/users/${user.id}`, { is_active: !user.is_active })
+    useAppToast().success(user.is_active ? 'Usuário desativado' : 'Usuário ativado')
+    refresh()
+  } catch {
+    useAppToast().error('Erro ao alterar status do usuário')
+  }
+}
+
+async function sendResetLink(user: User) {
+  const { post } = useApiMutation()
+  try {
+    await post('/forgot-password', { email: user.email })
+    useAppToast().success('Link de recuperação enviado')
+  } catch {
+    useAppToast().error('Erro ao enviar link de recuperação')
+  }
+}
 
 const userColumns: TableColumn<User>[] = [
   {
@@ -173,25 +223,74 @@ const userColumns: TableColumn<User>[] = [
   {
     accessorKey: 'is_active',
     header: 'Status',
-    cell: ({ row }) => h('span', { class: row.original.is_active ? 'text-success' : 'text-error' }, row.original.is_active ? 'Ativo' : 'Inativo')
+    cell: ({ row }) => h(UBadge, { variant: 'subtle', color: row.original.is_active ? 'success' : 'error' }, () => row.original.is_active ? 'Ativo' : 'Inativo')
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => h('div', { class: 'text-right' }, h(UDropdownMenu, {
+      content: { align: 'end' },
+      items: [
+        { type: 'label' as const, label: 'Ações' },
+        {
+          label: 'Editar',
+          icon: 'i-lucide-pencil',
+          onSelect: () => { editingUser.value = row.original }
+        },
+        { type: 'separator' as const },
+        {
+          label: row.original.is_active ? 'Desativar' : 'Ativar',
+          icon: row.original.is_active ? 'i-lucide-user-x' : 'i-lucide-user-check',
+          onSelect: () => toggleUserActive(row.original)
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Enviar link de recuperação',
+          icon: 'i-lucide-key',
+          onSelect: () => sendResetLink(row.original)
+        }
+      ]
+    }, () => h(UButton, { icon: 'i-lucide-ellipsis-vertical', color: 'neutral', variant: 'ghost', class: 'ml-auto' })))
   }
 ]
 
-async function handleDeletePlan() {
-  if (!office.value?.subscription?.plan?.id) return
-  loading.value = true
-  try {
-    await apiDelete(`/admin/offices/${office.value.id}/plan`)
-    toast.add({ title: 'Plano excluído com sucesso', color: 'success' })
-    refresh()
-  } catch (error) {
-    console.error('Erro ao excluir plano:', error)
-    toast.add({ title: 'Erro ao excluir plano', description: 'Ocorreu um erro inesperado.', color: 'error' })
-  } finally {
-    loading.value = false
-    showDeletePlanModal.value = false
+const tabItems = computed<NavigationMenuItem[][]>(() => [[
+  {
+    label: 'Escritório',
+    icon: 'i-lucide-building-2',
+    active: selectedTab.value === 'escritorio',
+    onSelect: (e?: Event) => {
+      e?.preventDefault?.()
+      selectedTab.value = 'escritorio'
+    }
+  },
+  {
+    label: `Empresas (${companies.value.length})`,
+    icon: 'i-lucide-building',
+    active: selectedTab.value === 'empresas',
+    onSelect: (e?: Event) => {
+      e?.preventDefault?.()
+      selectedTab.value = 'empresas'
+    }
+  },
+  {
+    label: `Faturas (${invoices.value.length})`,
+    icon: 'i-lucide-file-text',
+    active: selectedTab.value === 'faturas',
+    onSelect: (e?: Event) => {
+      e?.preventDefault?.()
+      selectedTab.value = 'faturas'
+    }
+  },
+  {
+    label: `Usuários (${users.value.length})`,
+    icon: 'i-lucide-users',
+    active: selectedTab.value === 'usuarios',
+    onSelect: (e?: Event) => {
+      e?.preventDefault?.()
+      selectedTab.value = 'usuarios'
+    }
   }
-}
+]])
 </script>
 
 <template>
@@ -214,9 +313,9 @@ async function handleDeletePlan() {
       </UDashboardNavbar>
 
       <UDashboardToolbar>
-        <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
+        <UNavigationMenu :items="tabItems" highlight class="-mx-1 flex-1" />
         <template #right>
-          <UsuariosAddModal v-if="office" :office-id="office.id" @created="refresh()" />
+          <UsuariosAddModal v-if="office && selectedTab === 'usuarios'" :office-id="office.id" @created="refresh()" />
         </template>
       </UDashboardToolbar>
     </template>
@@ -234,230 +333,233 @@ async function handleDeletePlan() {
       </div>
 
       <div v-else class="space-y-6">
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <UCard
-            v-for="card in statCards"
-            :key="card.label"
-          >
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm text-muted">
-                  {{ card.label }}
-                </p>
-                <p class="text-2xl font-bold mt-1">
-                  {{ card.value }}
-                </p>
-              </div>
-              <UIcon :name="card.icon" :class="['size-8', card.color]" />
-            </div>
-          </UCard>
-        </div>
-
-        <!-- Info Cards -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Card: Dados do Escritório -->
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="font-semibold text-lg">
+        <!-- Tab: Escritório -->
+        <div v-if="selectedTab === 'escritorio'">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UCard>
+              <template #header>
+                <div class="flex items-center justify-between">
+                  <p class="font-semibold">
                     Dados do Escritório
                   </p>
+                  <UBadge :color="office.is_active ? 'success' : 'error'" variant="subtle">
+                    {{ office.is_active ? 'Ativo' : 'Inativo' }}
+                  </UBadge>
                 </div>
-                <UBadge :color="office.is_active ? 'success' : 'error'" variant="subtle">
-                  {{ office.is_active ? 'Ativo' : 'Inativo' }}
-                </UBadge>
-              </div>
-            </template>
-            <div class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Nome
-                  </p>
-                  <p class="font-medium">
-                    {{ office.name }}
-                  </p>
+              </template>
+              <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Nome
+                    </p>
+                    <p class="font-medium">
+                      {{ office.name }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Tipo
+                    </p>
+                    <p class="font-medium">
+                      {{ office.type === 'contador' ? 'Contador' : 'Cliente Direto' }}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Tipo
-                  </p>
-                  <p class="font-medium">
-                    {{ office.type === 'contador' ? 'Contador' : 'Cliente Direto' }}
-                  </p>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    CNPJ
-                  </p>
-                  <p class="font-medium font-mono">
-                    {{ office.cnpj || '—' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Telefone
-                  </p>
-                  <p class="font-medium">
-                    {{ office.phone || '—' }}
-                  </p>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    E-mail
-                  </p>
-                  <p class="font-medium truncate" :title="office.email || undefined">
-                    {{ office.email || '—' }}
-                  </p>
-                </div>
-                <div v-if="office.is_reseller">
-                  <p class="text-sm text-muted mb-1">
-                    Revendedor
-                  </p>
-                  <UChip color="secondary" size="sm">
-                    Sim
-                  </UChip>
-                </div>
-              </div>
-              <div v-if="office.notes">
                 <USeparator />
-                <p class="text-sm text-muted mb-1">
-                  Observações
-                </p>
-                <p class="font-medium text-sm">
-                  {{ office.notes }}
-                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      CNPJ
+                    </p>
+                    <p class="font-medium font-mono">
+                      {{ office.cnpj || '—' }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Insc. Estadual
+                    </p>
+                    <p class="font-medium">
+                      {{ office.ie || '—' }}
+                    </p>
+                  </div>
+                </div>
+                <USeparator />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      E-mail
+                    </p>
+                    <p class="font-medium truncate" :title="office.email || undefined">
+                      {{ office.email || '—' }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Telefone
+                    </p>
+                    <p class="font-medium">
+                      {{ office.phone || '—' }}
+                    </p>
+                  </div>
+                </div>
+                <div v-if="office.logradouro || office.municipio">
+                  <USeparator />
+                  <p class="text-sm text-muted mb-1">
+                    Endereço
+                  </p>
+                  <p class="font-medium text-sm">
+                    {{ [office.logradouro, office.numero, office.complemento].filter(Boolean).join(', ') || '—' }}
+                  </p>
+                  <p class="text-sm text-muted">
+                    {{ [office.bairro, office.municipio, office.uf, office.cep].filter(Boolean).join(' — ') }}
+                  </p>
+                </div>
+                <div v-if="office.notes">
+                  <USeparator />
+                  <p class="text-sm text-muted mb-1">
+                    Observações
+                  </p>
+                  <p class="font-medium text-sm">
+                    {{ office.notes }}
+                  </p>
+                </div>
               </div>
-            </div>
-          </UCard>
+            </UCard>
 
-          <!-- Card: Dados do Plano -->
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="font-semibold text-lg">
+            <UCard>
+              <template #header>
+                <div class="flex items-center justify-between">
+                  <p class="font-semibold">
                     Dados do Plano
                   </p>
+                  <UBadge
+                    v-if="office.subscription"
+                    :color="subscriptionStatus.color"
+                    variant="subtle"
+                  >
+                    {{ subscriptionStatus.label }}
+                  </UBadge>
                 </div>
-                <UBadge
-                  v-if="office.subscription"
-                  :color="({
-                    active: 'success',
-                    trial: 'warning',
-                    cancelled: 'error',
-                    expired: 'error'
-                  } as Record<string, 'success' | 'warning' | 'error' | 'info'>)[office.subscription.status] || 'info'"
-                  variant="subtle"
-                >
-                  {{
-                    { active: 'Ativo', trial: 'Trial', cancelled: 'Cancelado', expired: 'Expirado' }[office.subscription?.status] || 'Sem plano'
-                  }}
-                </UBadge>
+              </template>
+              <div v-if="!office.subscription" class="flex flex-col items-center justify-center py-8">
+                <UIcon name="i-lucide-crown" class="size-10 text-muted mb-3" />
+                <p class="text-muted text-sm">
+                  Nenhum plano contratado.
+                </p>
               </div>
-            </template>
-            <div v-if="!office.subscription" class="flex flex-col items-center justify-center py-8">
-              <UIcon name="i-lucide-crown" class="size-10 text-muted mb-3" />
-              <p class="text-muted text-sm">
-                Nenhum plano contratado.
-              </p>
-            </div>
-            <div v-else class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Plano
-                  </p>
-                  <p class="font-medium text-lg">
-                    {{ office.subscription.plan?.name }}
-                  </p>
+              <div v-else class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Plano
+                    </p>
+                    <p class="font-medium text-lg">
+                      {{ office.subscription.plan?.name }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Valor
+                    </p>
+                    <p class="font-medium">
+                      R$ {{ Number(office.subscription.plan?.price || 0).toFixed(2).replace('.', ',') }}/mês
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Valor
-                  </p>
-                  <p class="font-medium">
-                    R$ {{ Number(office.subscription.plan?.price || 0).toFixed(2).replace('.', ',') }}/mês
-                  </p>
+                <USeparator />
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Início
+                    </p>
+                    <p class="font-medium">
+                      {{ new Date(office.subscription.starts_at).toLocaleDateString('pt-BR') }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Vencimento
+                    </p>
+                    <p class="font-medium">
+                      {{ office.subscription.ends_at ? new Date(office.subscription.ends_at).toLocaleDateString('pt-BR') : '—' }}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Início
-                  </p>
-                  <p class="font-medium">
-                    {{ new Date(office.subscription.starts_at).toLocaleDateString('pt-BR') }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Vencimento
-                  </p>
-                  <p class="font-medium">
-                    {{ office.subscription.ends_at ? new Date(office.subscription.ends_at).toLocaleDateString('pt-BR') : '—' }}
-                  </p>
-                </div>
-              </div>
-              <USeparator />
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Limite de Empresas
-                  </p>
-                  <p class="font-medium">
-                    {{ office.subscription.plan?.max_companies === 999 ? 'Ilimitado' : office.subscription.plan?.max_companies }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm text-muted mb-1">
-                    Limite de NFes/Mês
-                  </p>
-                  <p class="font-medium">
-                    {{ office.subscription.plan?.max_nfs_month === 0 ? 'Ilimitado' : office.subscription.plan?.max_nfs_month }}
-                  </p>
+                <USeparator />
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Limite de Empresas
+                    </p>
+                    <p class="font-medium">
+                      {{ office.subscription.plan?.max_companies === 999 ? 'Ilimitado' : office.subscription.plan?.max_companies }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-sm text-muted mb-1">
+                      Limite de NFes/Mês
+                    </p>
+                    <p class="font-medium">
+                      {{ office.subscription.plan?.max_nfs_month === 0 ? 'Ilimitado' : office.subscription.plan?.max_nfs_month }}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <template #footer>
-              <div v-if="office.subscription" class="flex gap-2">
+              <template #footer>
+                <div v-if="office.subscription" class="flex gap-2">
+                  <UButton
+                    label="Editar Plano"
+                    icon="i-lucide-pencil"
+                    variant="outline"
+                    class="flex-1"
+                    @click="showEditPlanModal = true"
+                  />
+                  <UButton
+                    label="Excluir Plano"
+                    icon="i-lucide-trash"
+                    color="error"
+                    variant="outline"
+                    class="flex-1"
+                    @click="deletingPlan = true"
+                  />
+                </div>
                 <UButton
-                  label="Editar Plano"
-                  icon="i-lucide-pencil"
-                  variant="outline"
-                  class="flex-1"
-                  @click="showEditPlanModal = true"
+                  v-else
+                  label="Atribuir Plano"
+                  icon="i-lucide-crown"
+                  class="w-full"
+                  @click="showAssignPlanModal = true"
                 />
-                <UButton
-                  label="Excluir Plano"
-                  icon="i-lucide-trash"
-                  color="error"
-                  variant="outline"
-                  class="flex-1"
-                  @click="showDeletePlanModal = true"
-                />
-              </div>
-              <UButton
-                v-else
-                label="Atribuir Plano"
-                icon="i-lucide-crown"
-                class="w-full"
-                @click="showAssignPlanModal = true"
-              />
-            </template>
-          </UCard>
+              </template>
+            </UCard>
+          </div>
         </div>
 
-        <!-- Tab Content -->
+        <!-- Tab: Empresas -->
         <div v-if="selectedTab === 'empresas'">
-          <div v-if="companies.length === 0" class="flex flex-col items-center justify-center py-12">
+          <UDashboardToolbar class="mb-4">
+            <UInput
+              v-model="companySearch"
+              class="max-w-sm"
+              icon="i-lucide-search"
+              placeholder="Buscar por razão social, CNPJ..."
+            />
+            <template #right>
+              <USelect
+                v-model="companyAmbienteFilter"
+                :items="[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Produção', value: 'producao' },
+                  { label: 'Homologação', value: 'homologacao' }
+                ]"
+                class="min-w-36"
+              />
+            </template>
+          </UDashboardToolbar>
+
+          <div v-if="filteredCompanies.length === 0" class="flex flex-col items-center justify-center py-12">
             <UIcon name="i-lucide-building" class="size-12 text-muted mb-4" />
             <p class="text-muted">
               Nenhuma empresa vinculada.
@@ -465,19 +567,30 @@ async function handleDeletePlan() {
           </div>
           <UTable
             v-else
-            :data="companies"
+            :data="filteredCompanies"
             :columns="companyColumns"
-            :ui="{
-              base: 'table-fixed border-separate border-spacing-0',
-              thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-              tbody: '[&>tr]:last:[&>td]:border-b-0',
-              th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
-              td: 'border-b border-default'
-            }"
+            :ui="tableUi"
           />
         </div>
 
+        <!-- Tab: Faturas -->
         <div v-if="selectedTab === 'faturas'">
+          <UDashboardToolbar class="mb-4">
+            <template #right>
+              <USelect
+                v-model="invoiceStatusFilter"
+                :items="[
+                  { label: 'Todos', value: 'all' },
+                  { label: 'Pendentes', value: 'pending' },
+                  { label: 'Pagos', value: 'paid' },
+                  { label: 'Vencidos', value: 'overdue' },
+                  { label: 'Cancelados', value: 'cancelled' }
+                ]"
+                class="min-w-36"
+              />
+            </template>
+          </UDashboardToolbar>
+
           <div v-if="invoices.length === 0" class="flex flex-col items-center justify-center py-12">
             <UIcon name="i-lucide-file-text" class="size-12 text-muted mb-4" />
             <p class="text-muted">
@@ -488,18 +601,22 @@ async function handleDeletePlan() {
             v-else
             :data="invoices"
             :columns="invoiceColumns"
-            :ui="{
-              base: 'table-fixed border-separate border-spacing-0',
-              thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-              tbody: '[&>tr]:last:[&>td]:border-b-0',
-              th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
-              td: 'border-b border-default'
-            }"
+            :ui="tableUi"
           />
         </div>
 
+        <!-- Tab: Usuários -->
         <div v-if="selectedTab === 'usuarios'">
-          <div v-if="users.length === 0" class="flex flex-col items-center justify-center py-12">
+          <UDashboardToolbar class="mb-4">
+            <UInput
+              v-model="userSearch"
+              class="max-w-sm"
+              icon="i-lucide-search"
+              placeholder="Buscar por nome, e-mail..."
+            />
+          </UDashboardToolbar>
+
+          <div v-if="filteredUsers.length === 0" class="flex flex-col items-center justify-center py-12">
             <UIcon name="i-lucide-users" class="size-12 text-muted mb-4" />
             <p class="text-muted">
               Nenhum usuário vinculado.
@@ -507,45 +624,14 @@ async function handleDeletePlan() {
           </div>
           <UTable
             v-else
-            :data="users"
+            :data="filteredUsers"
             :columns="userColumns"
-            :ui="{
-              base: 'table-fixed border-separate border-spacing-0',
-              thead: '[&>tr]:bg-elevated/50 [&>tr]:after:content-none',
-              tbody: '[&>tr]:last:[&>td]:border-b-0',
-              th: 'py-2 first:rounded-l-lg last:rounded-r-lg border-y border-default first:border-l last:border-r',
-              td: 'border-b border-default'
-            }"
+            :ui="tableUi"
           />
         </div>
       </div>
     </template>
   </UDashboardPanel>
-
-  <UModal
-    v-model:open="showDeletePlanModal"
-    title="Excluir plano"
-  >
-    <template #body>
-      <p class="text-muted">
-        Deseja excluir o plano <strong>{{ office?.subscription?.plan?.name }}</strong> do escritório <strong>{{ office?.name }}</strong>?
-      </p>
-    </template>
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Excluir"
-        color="error"
-        :loading="loading"
-        @click="handleDeletePlan"
-      />
-    </template>
-  </UModal>
 
   <AdminEscritoriosAssignPlanModal
     v-if="office"
@@ -559,5 +645,17 @@ async function handleDeletePlan() {
     v-model:open="showEditPlanModal"
     :office="office"
     @updated="refresh()"
+  />
+
+  <AdminEscritoriosDeletePlanModal
+    v-if="deletingPlan && office"
+    :office="office"
+    @deleted="() => { deletingPlan = false; refresh() }"
+  />
+
+  <UsuariosEditModal
+    v-if="editingUser"
+    :user="editingUser"
+    @updated="() => { editingUser = null; refresh() }"
   />
 </template>

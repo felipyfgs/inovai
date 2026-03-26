@@ -4,7 +4,7 @@
 
 InovAI is a multi-tenant SaaS for Brazilian accounting firms. **Backend**: Laravel 13 (PHP 8.3+) with PostgreSQL 16, Redis 7, Sanctum 4, Spatie Permission 7. **Frontend**: Nuxt 4 with TypeScript, Nuxt UI v4, TanStack Table, Zod. Multi-tenancy via `X-Company-Id` header. SPA mode (no SSR). All user-facing text in Portuguese.
 
-**Infrastructure**: Docker Compose with PostgreSQL 16 and Redis 7. Backend runs on `localhost:8000`, frontend on `localhost:3000`.
+**Infrastructure**: Docker Compose with PostgreSQL 16 and Redis 7. Backend runs on `0.0.0.0:8000`, frontend on `localhost:3000`.
 
 ## Build/Lint/Test Commands
 

@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import { upperFirst } from 'scule'
 import { getPaginationRowModel } from '@tanstack/table-core'
 import type { Row } from '@tanstack/table-core'
-import { UBadge, UButton, UDropdownMenu } from '#components'
 import type { Office, PaginatedResponse } from '~/types'
+
+const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const UDropdownMenu = resolveComponent('UDropdownMenu')
 
 definePageMeta({ middleware: 'admin' })
 
-const toast = useToast()
-const { handleError } = useApiError()
 const table = useTemplateRef('table')
+const router = useRouter()
 
 const search = ref('')
 const typeFilter = ref('all')
@@ -30,8 +33,9 @@ const offices = computed(() => data.value?.data || [])
 
 const editingOffice = ref<Office | null>(null)
 const deletingOffice = ref<Office | null>(null)
-const router = useRouter()
 
+const columnVisibility = ref()
+const rowSelection = ref({})
 const pagination = ref({ pageIndex: 0, pageSize: 15 })
 
 function getRowItems(row: Row<Office>) {
@@ -41,10 +45,7 @@ function getRowItems(row: Row<Office>) {
       label: 'Ver',
       icon: 'i-lucide-eye',
       onSelect() {
-        console.log('[Office list] Navigating to office details, id:', row.original.id)
         router.push(`/admin/escritorios/${row.original.id}`)
-          .then(() => console.log('[Office list] Navigation successful'))
-          .catch(err => console.error('[Office list] Navigation error:', err))
       }
     },
     { type: 'separator' as const },
@@ -124,19 +125,6 @@ const columns: TableColumn<Office>[] = [
     }, () => h(UButton, { icon: 'i-lucide-ellipsis-vertical', color: 'neutral', variant: 'ghost', class: 'ml-auto' })))
   }
 ]
-
-async function handleDelete() {
-  if (!deletingOffice.value) return
-  const { del } = useApiMutation()
-  try {
-    await del(`/admin/offices/${deletingOffice.value.id}`)
-    toast.add({ title: 'Removido com sucesso', color: 'success' })
-    deletingOffice.value = null
-    refresh()
-  } catch (e: unknown) {
-    handleError(e, 'Erro ao remover')
-  }
-}
 </script>
 
 <template>
@@ -150,40 +138,70 @@ async function handleDelete() {
           <AdminContadoresAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>
-    </template>
 
-    <template #body>
-      <div class="flex flex-wrap items-center justify-between gap-1.5">
+      <UDashboardToolbar>
         <UInput
           v-model="search"
           class="max-w-sm"
           icon="i-lucide-search"
           placeholder="Buscar por nome, CNPJ..."
         />
-        <div class="flex flex-wrap items-center gap-1.5">
-          <USelect
-            v-model="typeFilter"
-            :items="[
-              { label: 'Todos os tipos', value: 'all' },
-              { label: 'Contadores', value: 'contador' },
-              { label: 'Diretos', value: 'direct' }
-            ]"
-            class="min-w-36"
-          />
-          <USelect
-            v-model="statusFilter"
-            :items="[
-              { label: 'Todos', value: 'all' },
-              { label: 'Ativos', value: 'active' },
-              { label: 'Inativos', value: 'inactive' }
-            ]"
-            class="min-w-28"
-          />
-        </div>
-      </div>
+        <template #right>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <USelect
+              v-model="typeFilter"
+              :items="[
+                { label: 'Todos os tipos', value: 'all' },
+                { label: 'Contadores', value: 'contador' },
+                { label: 'Diretos', value: 'direct' }
+              ]"
+              class="min-w-36"
+            />
+            <USelect
+              v-model="statusFilter"
+              :items="[
+                { label: 'Todos', value: 'all' },
+                { label: 'Ativos', value: 'active' },
+                { label: 'Inativos', value: 'inactive' }
+              ]"
+              class="min-w-28"
+            />
+            <UDropdownMenu
+              :items="
+                table?.tableApi
+                  ?.getAllColumns()
+                  .filter((column: any) => column.getCanHide())
+                  .map((column: any) => ({
+                    label: upperFirst(column.id),
+                    type: 'checkbox' as const,
+                    checked: column.getIsVisible(),
+                    onUpdateChecked(checked: boolean) {
+                      table?.tableApi?.getColumn(column.id)?.toggleVisibility(!!checked)
+                    },
+                    onSelect(e?: Event) {
+                      e?.preventDefault()
+                    }
+                  }))
+              "
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                label="Exibir"
+                color="neutral"
+                variant="outline"
+                trailing-icon="i-lucide-settings-2"
+              />
+            </UDropdownMenu>
+          </div>
+        </template>
+      </UDashboardToolbar>
+    </template>
 
+    <template #body>
       <UTable
         ref="table"
+        v-model:column-visibility="columnVisibility"
+        v-model:row-selection="rowSelection"
         v-model:pagination="pagination"
         :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
         class="shrink-0"
@@ -202,7 +220,8 @@ async function handleDelete() {
 
       <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
         <div class="text-sm text-muted">
-          {{ offices.length }} registro(s)
+          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} de
+          {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }} registro(s) selecionado(s).
         </div>
         <UPagination
           :default-page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
@@ -220,25 +239,9 @@ async function handleDelete() {
     @updated="() => { editingOffice = null; refresh() }"
   />
 
-  <UModal
-    :open="!!deletingOffice"
-    title="Confirmar exclusão"
-    description="Esta ação não pode ser desfeita."
-    @update:open="(v) => { if (!v) deletingOffice = null }"
-  >
-    <template #body>
-      <p>
-        Deseja excluir <strong>{{ deletingOffice?.name }}</strong>? Esta ação não pode ser desfeita.
-      </p>
-    </template>
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close(); deletingOffice = null"
-      />
-      <UButton label="Excluir" color="error" @click="handleDelete" />
-    </template>
-  </UModal>
+  <AdminContadoresDeleteModal
+    v-if="deletingOffice"
+    :office="deletingOffice"
+    @deleted="() => { deletingOffice = null; refresh() }"
+  />
 </template>

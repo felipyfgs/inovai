@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import { upperFirst } from 'scule'
 import { getPaginationRowModel } from '@tanstack/table-core'
-import { UBadge, UButton, UDropdownMenu } from '#components'
 import type { Invoice, PaginatedResponse } from '~/types'
+
+const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const UDropdownMenu = resolveComponent('UDropdownMenu')
 
 definePageMeta({ middleware: 'admin' })
 
-const toast = useToast()
-const { handleError } = useApiError()
 const table = useTemplateRef('table')
 
 const statusFilter = ref('all')
+const columnVisibility = ref()
+const rowSelection = ref({})
 const pagination = ref({ pageIndex: 0, pageSize: 15 })
-const showGenerateModal = ref(false)
-const generatingMonthly = ref(false)
-const generateForm = reactive({ reference: '', due_at: '' })
 
 const queryParams = computed(() => ({
   status: statusFilter.value !== 'all' ? statusFilter.value : undefined
@@ -46,11 +47,11 @@ const { put } = useApiMutation()
 async function markAsPaid(invoice: Invoice) {
   try {
     await put(`/admin/invoices/${invoice.id}`, { status: 'paid' })
-    toast.add({ title: 'Fatura marcada como paga', color: 'success' })
+    useAppToast().success('Fatura marcada como paga')
     refresh()
     refreshDashboard()
   } catch {
-    toast.add({ title: 'Erro ao atualizar fatura', color: 'error' })
+    useAppToast().error('Erro ao atualizar fatura')
   }
 }
 
@@ -106,22 +107,6 @@ const columns: TableColumn<Invoice>[] = [
     }
   }
 ]
-
-async function handleGenerateMonthly() {
-  generatingMonthly.value = true
-  const { post } = useApiMutation()
-  try {
-    const res = await post<{ message: string, created: number }>('/admin/invoices/generate-monthly', generateForm)
-    toast.add({ title: res.message, color: 'success' })
-    showGenerateModal.value = false
-    refresh()
-    refreshDashboard()
-  } catch (e: unknown) {
-    handleError(e, 'Erro ao gerar faturas')
-  } finally {
-    generatingMonthly.value = false
-  }
-}
 </script>
 
 <template>
@@ -132,13 +117,53 @@ async function handleGenerateMonthly() {
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UButton
-            label="Gerar Mensalidades"
-            icon="i-lucide-zap"
-            @click="showGenerateModal = true"
-          />
+          <AdminCobrancasGenerateModal @generated="refresh(); refreshDashboard()" />
         </template>
       </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <template #right>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <USelect
+              v-model="statusFilter"
+              :items="[
+                { label: 'Todos', value: 'all' },
+                { label: 'Pendentes', value: 'pending' },
+                { label: 'Pagos', value: 'paid' },
+                { label: 'Vencidos', value: 'overdue' },
+                { label: 'Cancelados', value: 'cancelled' }
+              ]"
+              class="min-w-36"
+            />
+            <UDropdownMenu
+              :items="
+                table?.tableApi
+                  ?.getAllColumns()
+                  .filter((column: any) => column.getCanHide())
+                  .map((column: any) => ({
+                    label: upperFirst(column.id),
+                    type: 'checkbox' as const,
+                    checked: column.getIsVisible(),
+                    onUpdateChecked(checked: boolean) {
+                      table?.tableApi?.getColumn(column.id)?.toggleVisibility(!!checked)
+                    },
+                    onSelect(e?: Event) {
+                      e?.preventDefault()
+                    }
+                  }))
+              "
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                label="Exibir"
+                color="neutral"
+                variant="outline"
+                trailing-icon="i-lucide-settings-2"
+              />
+            </UDropdownMenu>
+          </div>
+        </template>
+      </UDashboardToolbar>
     </template>
 
     <template #body>
@@ -177,22 +202,10 @@ async function handleGenerateMonthly() {
         </UCard>
       </div>
 
-      <div class="flex flex-wrap items-center gap-1.5 mb-4">
-        <USelect
-          v-model="statusFilter"
-          :items="[
-            { label: 'Todos', value: 'all' },
-            { label: 'Pendentes', value: 'pending' },
-            { label: 'Pagos', value: 'paid' },
-            { label: 'Vencidos', value: 'overdue' },
-            { label: 'Cancelados', value: 'cancelled' }
-          ]"
-          class="min-w-36"
-        />
-      </div>
-
       <UTable
         ref="table"
+        v-model:column-visibility="columnVisibility"
+        v-model:row-selection="rowSelection"
         v-model:pagination="pagination"
         :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
         class="shrink-0"
@@ -209,7 +222,11 @@ async function handleGenerateMonthly() {
         }"
       />
 
-      <div class="flex items-center justify-end gap-3 border-t border-default pt-4 mt-auto">
+      <div class="flex items-center justify-between gap-3 border-t border-default pt-4 mt-auto">
+        <div class="text-sm text-muted">
+          {{ table?.tableApi?.getFilteredSelectedRowModel().rows.length || 0 }} de
+          {{ table?.tableApi?.getFilteredRowModel().rows.length || 0 }} registro(s) selecionado(s).
+        </div>
         <UPagination
           :default-page="(table?.tableApi?.getState().pagination.pageIndex || 0) + 1"
           :items-per-page="table?.tableApi?.getState().pagination.pageSize"
@@ -219,36 +236,4 @@ async function handleGenerateMonthly() {
       </div>
     </template>
   </UDashboardPanel>
-
-  <UModal
-    v-model:open="showGenerateModal"
-    title="Gerar Mensalidades"
-    description="Gera faturas mensais para todos os clientes ativos com assinatura."
-    :ui="{ footer: 'justify-end' }"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <UFormField label="Referência (ex: 2026-03)" name="reference">
-          <UInput v-model="generateForm.reference" placeholder="2026-03" class="w-full" />
-        </UFormField>
-        <UFormField label="Data de Vencimento" name="due_at">
-          <UInput v-model="generateForm.due_at" type="date" class="w-full" />
-        </UFormField>
-      </div>
-    </template>
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Gerar Faturas"
-        icon="i-lucide-zap"
-        :loading="generatingMonthly"
-        @click="handleGenerateMonthly"
-      />
-    </template>
-  </UModal>
 </template>

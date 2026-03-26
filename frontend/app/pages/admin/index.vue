@@ -10,42 +10,36 @@ const statCards = computed(() => [
     label: 'Receita do Mês (MRR)',
     value: stats.value?.mrr ?? 0,
     icon: 'i-lucide-trending-up',
-    color: 'text-success',
     format: 'currency'
   },
   {
     label: 'Mês Anterior',
     value: stats.value?.last_month_revenue ?? 0,
     icon: 'i-lucide-calendar',
-    color: 'text-muted',
     format: 'currency'
   },
   {
     label: 'A Receber',
     value: stats.value?.pending ?? 0,
     icon: 'i-lucide-clock',
-    color: 'text-warning',
     format: 'currency'
   },
   {
     label: 'Vencido',
     value: stats.value?.overdue ?? 0,
     icon: 'i-lucide-alert-circle',
-    color: 'text-error',
     format: 'currency'
   },
   {
     label: 'Total de Clientes',
     value: stats.value?.total_offices ?? 0,
     icon: 'i-lucide-users',
-    color: 'text-primary',
     format: 'number'
   },
   {
     label: 'Inadimplentes',
     value: stats.value?.inadimplentes ?? 0,
     icon: 'i-lucide-user-x',
-    color: 'text-error',
     format: 'number'
   }
 ])
@@ -58,8 +52,6 @@ const statCards = computed(() => [
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-
-        <template #right />
       </UDashboardNavbar>
     </template>
 
@@ -69,36 +61,39 @@ const statCards = computed(() => [
       </div>
 
       <div v-else class="space-y-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <UCard
+        <UPageGrid class="lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-px">
+          <UPageCard
             v-for="card in statCards"
             :key="card.label"
+            :icon="card.icon"
+            :title="card.label"
+            variant="subtle"
+            :ui="{
+              container: 'gap-y-1.5',
+              wrapper: 'items-start',
+              leading: 'p-2.5 rounded-full bg-primary/10 ring ring-inset ring-primary/25 flex-col',
+              title: 'font-normal text-muted text-xs uppercase'
+            }"
+            class="lg:rounded-none first:rounded-l-lg last:rounded-r-lg hover:z-1"
           >
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm text-muted">
-                  {{ card.label }}
-                </p>
-                <p class="text-2xl font-bold mt-1">
-                  <template v-if="card.format === 'currency'">
-                    {{ formatCurrency(card.value) }}
-                  </template>
-                  <template v-else>
-                    {{ card.value }}
-                  </template>
-                </p>
-              </div>
-              <UIcon :name="card.icon" :class="['size-8', card.color]" />
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-semibold text-highlighted">
+                <template v-if="card.format === 'currency'">
+                  {{ formatCurrency(card.value) }}
+                </template>
+                <template v-else>
+                  {{ card.value }}
+                </template>
+              </span>
             </div>
-          </UCard>
-        </div>
+          </UPageCard>
+        </UPageGrid>
 
-        <UCard v-if="stats">
-          <template #header>
-            <p class="font-medium">
-              Taxa de Inadimplência
-            </p>
-          </template>
+        <UPageCard
+          v-if="stats"
+          title="Taxa de Inadimplência"
+          variant="subtle"
+        >
           <div class="flex items-center gap-4">
             <UProgress
               :value="stats.churn_rate"
@@ -111,13 +106,13 @@ const statCards = computed(() => [
           <p class="text-sm text-muted mt-2">
             {{ stats.inadimplentes }} de {{ stats.total_offices }} clientes com faturas vencidas
           </p>
-        </UCard>
+        </UPageCard>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <UButton
             label="Gerir Contadores"
             icon="i-lucide-users"
-            to="/admin/contadores"
+            to="/admin/escritorios"
             variant="outline"
             color="neutral"
             block

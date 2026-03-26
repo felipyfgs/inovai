@@ -59,14 +59,23 @@ class OfficeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'cnpj' => 'required|string|max:18|unique:offices,cnpj',
+            'cnpj' => 'required|string|max:18|min:11|unique:offices,cnpj',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'type' => 'required|in:contador,direct',
-            'parent_office_id' => 'nullable|exists:offices,id',
+            'logradouro' => 'nullable|string|max:255',
+            'numero' => 'nullable|string|max:20',
+            'complemento' => 'nullable|string|max:100',
+            'bairro' => 'nullable|string|max:100',
+            'municipio' => 'nullable|string|max:100',
+            'municipio_ibge' => 'nullable|string|max:7',
+            'uf' => 'nullable|string|max:2',
+            'cep' => 'nullable|string|max:9',
+            'ie' => 'nullable|string|max:20',
             'notes' => 'nullable|string',
             'plan_id' => 'nullable|exists:plans,id',
         ]);
+
+        $validated['type'] = 'contador';
 
         $office = Office::create($validated);
 
@@ -86,12 +95,19 @@ class OfficeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'cnpj' => "sometimes|string|max:18|unique:offices,cnpj,{$office->id}",
+            'cnpj' => "sometimes|string|max:18|min:11|unique:offices,cnpj,{$office->id}",
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
-            'type' => 'sometimes|in:contador,direct',
+            'logradouro' => 'nullable|string|max:255',
+            'numero' => 'nullable|string|max:20',
+            'complemento' => 'nullable|string|max:100',
+            'bairro' => 'nullable|string|max:100',
+            'municipio' => 'nullable|string|max:100',
+            'municipio_ibge' => 'nullable|string|max:7',
+            'uf' => 'nullable|string|max:2',
+            'cep' => 'nullable|string|max:9',
+            'ie' => 'nullable|string|max:20',
             'is_active' => 'boolean',
-            'parent_office_id' => 'nullable|exists:offices,id',
             'notes' => 'nullable|string',
         ]);
 
