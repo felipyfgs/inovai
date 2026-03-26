@@ -4,14 +4,10 @@ import type { Plan } from '~/types'
 const props = defineProps<{ plan: Plan }>()
 const emit = defineEmits<{ deleted: [] }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 const loading = ref(false)
 const { del } = useApiMutation()
 const { handleError } = useApiError()
-
-watch(() => props.plan, (val) => {
-  if (val) open.value = true
-}, { immediate: true })
 
 async function onSubmit() {
   loading.value = true
@@ -32,8 +28,7 @@ async function onSubmit() {
   <UModal
     v-model:open="open"
     title="Confirmar exclusão"
-    :description="`Esta ação não pode ser desfeita.`"
-    @update:open="(v) => { if (!v) emit('deleted') }"
+    description="Esta ação não pode ser desfeita."
   >
     <template #body>
       <p>

@@ -15,6 +15,8 @@ class Plan extends Model
         'max_nfs_month',
         'features',
         'is_active',
+        'grace_period_days',
+        'max_overdue_days',
     ];
 
     protected function casts(): array
@@ -23,6 +25,8 @@ class Plan extends Model
             'price' => 'decimal:2',
             'features' => 'array',
             'is_active' => 'boolean',
+            'grace_period_days' => 'integer',
+            'max_overdue_days' => 'integer',
         ];
     }
 

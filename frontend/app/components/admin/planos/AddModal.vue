@@ -15,7 +15,9 @@ const schema = z.object({
   price: z.coerce.number().min(0, 'Preço deve ser maior ou igual a 0'),
   max_companies: z.coerce.number().int().min(1, 'Mínimo 1 empresa'),
   max_nfs_month: z.coerce.number().int().min(0, 'Mínimo 0'),
-  is_active: z.boolean().default(true)
+  is_active: z.boolean().default(true),
+  grace_period_days: z.coerce.number().int().min(0).max(90).default(7),
+  max_overdue_days: z.coerce.number().int().min(0).max(365).default(30)
 })
 
 type Schema = z.output<typeof schema>
@@ -26,7 +28,9 @@ const state = reactive<Partial<Schema>>({
   price: 0,
   max_companies: 1,
   max_nfs_month: 0,
-  is_active: true
+  is_active: true,
+  grace_period_days: 7,
+  max_overdue_days: 30
 })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -36,7 +40,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     toast.add({ title: 'Plano criado com sucesso', color: 'success' })
     open.value = false
     emit('created')
-    Object.assign(state, { name: '', description: '', price: 0, max_companies: 1, max_nfs_month: 0, is_active: true })
+    Object.assign(state, { name: '', description: '', price: 0, max_companies: 1, max_nfs_month: 0, is_active: true, grace_period_days: 7, max_overdue_days: 30 })
   } catch (e: unknown) {
     const err = e as { response?: { _data?: { message?: string } } }
     toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao criar plano.', color: 'error' })
@@ -97,6 +101,28 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               v-model="state.max_nfs_month"
               type="number"
               min="0"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Carência (dias)" name="grace_period_days" required>
+            <UInput
+              v-model="state.grace_period_days"
+              type="number"
+              min="0"
+              max="90"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Máx. Dias em Atraso" name="max_overdue_days" required>
+            <UInput
+              v-model="state.max_overdue_days"
+              type="number"
+              min="0"
+              max="365"
               class="w-full"
             />
           </UFormField>

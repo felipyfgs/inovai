@@ -19,12 +19,22 @@ export interface AppUser {
   phone?: string | null
   office_id?: number | null
   is_active?: boolean
-  avatar?: string | AvatarProps
-  status?: UserStatus
-  location?: string
   office?: Office
   companies?: Company[]
   roles?: { id: number, name: string }[]
+}
+
+export interface AdminUser {
+  id: number
+  name: string
+  email: string
+  phone?: string | null
+  office_id: null
+  is_active: boolean
+  must_change_password: boolean
+  roles?: { id: number, name: string }[]
+  created_at: string
+  updated_at: string
 }
 
 export type User = AppUser
@@ -100,6 +110,8 @@ export interface Plan {
   max_nfs_month: number
   features: string[] | null
   is_active: boolean
+  grace_period_days: number
+  max_overdue_days: number
 }
 
 export interface Subscription {
@@ -137,8 +149,9 @@ export interface Invoice {
 }
 
 export interface AdminDashboard {
-  mrr: number
-  last_month_revenue: number
+  revenue: number
+  previous_revenue: number
+  revenue_variation: number
   pending: number
   overdue: number
   total_offices: number
@@ -300,4 +313,11 @@ export interface PaginatedResponse<T> {
   last_page: number
   per_page: number
   total: number
+}
+
+export type Period = 'daily' | 'weekly' | 'monthly'
+
+export interface Range {
+  start: Date
+  end: Date
 }

@@ -172,6 +172,14 @@ const adminLinks = [{
   onSelect: () => {
     open.value = false
   }
+}, {
+  label: 'Administradores',
+  icon: 'i-lucide-shield',
+  to: '/admin/admins',
+  module: 'admin-admins',
+  onSelect: () => {
+    open.value = false
+  }
 }]
 
 const bottomLinks = [{
@@ -199,8 +207,8 @@ const links = computed<NavigationMenuItem[][]>(() => [
 const groups = computed(() => [{
   id: 'links',
   label: 'Ir para',
-  items: links.value.flat() as NavigationMenuItem[]
-}])
+  items: links.value.flat()
+}] as unknown as import('@nuxt/ui').CommandPaletteGroup[])
 
 onMounted(async () => {
   const cookie = useCookie('cookie-consent')
@@ -239,7 +247,10 @@ onMounted(async () => {
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
-        <OfficeSelector v-if="isPlatformAdmin" :collapsed="collapsed" />
+        <NuxtLink v-if="isPlatformAdmin" to="/admin" class="flex items-center gap-2 px-2.5 py-2">
+          <UIcon name="i-lucide-shield-check" class="size-6 text-primary shrink-0" />
+          <span v-if="!collapsed" class="font-semibold text-sm truncate">InovAI Admin</span>
+        </NuxtLink>
         <TeamsMenu v-else :collapsed="collapsed" />
       </template>
 

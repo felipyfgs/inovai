@@ -33,10 +33,30 @@ const offices = computed(() => data.value?.data || [])
 
 const editingOffice = ref<Office | null>(null)
 const deletingOffice = ref<Office | null>(null)
+const editOpen = ref(false)
 
 const columnVisibility = ref()
 const rowSelection = ref({})
 const pagination = ref({ pageIndex: 0, pageSize: 15 })
+
+const { put } = useApiMutation()
+
+async function toggleActive(office: Office) {
+  try {
+    const payload: Record<string, unknown> = { is_active: !office.is_active }
+    if (office.is_active) {
+      payload.inactivation_reason = 'Desativação manual pelo administrador'
+    } else {
+      payload.inactivated_at = null
+      payload.inactivation_reason = null
+    }
+    await put(`/admin/offices/${office.id}`, payload)
+    useAppToast().success(office.is_active ? 'Escritório desativado' : 'Escritório reativado')
+    refresh()
+  } catch {
+    useAppToast().error('Erro ao alterar status do escritório')
+  }
+}
 
 function getRowItems(row: Row<Office>) {
   return [
@@ -48,11 +68,19 @@ function getRowItems(row: Row<Office>) {
         router.push(`/admin/escritorios/${row.original.id}`)
       }
     },
+    {
+      label: row.original.is_active ? 'Desativar' : 'Ativar',
+      icon: row.original.is_active ? 'i-lucide-user-x' : 'i-lucide-user-check',
+      onSelect() { toggleActive(row.original) }
+    },
     { type: 'separator' as const },
     {
       label: 'Editar',
       icon: 'i-lucide-pencil',
-      onSelect() { editingOffice.value = row.original }
+      onSelect() {
+        editingOffice.value = row.original
+        editOpen.value = true
+      }
     },
     { type: 'separator' as const },
     {
@@ -235,6 +263,7 @@ const columns: TableColumn<Office>[] = [
 
   <AdminContadoresEditModal
     v-if="editingOffice"
+    v-model:open="editOpen"
     :office="editingOffice"
     @updated="() => { editingOffice = null; refresh() }"
   />

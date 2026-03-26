@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Office;
 use App\Models\Plan;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -108,6 +109,7 @@ class OfficeController extends Controller
             'cep' => 'nullable|string|max:9',
             'ie' => 'nullable|string|max:20',
             'is_active' => 'boolean',
+            'inactivation_reason' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
 
@@ -187,5 +189,63 @@ class OfficeController extends Controller
                 'companies' => $contadores->sum('companies_count') + $diretas->sum('companies_count'),
             ],
         ]);
+    }
+
+    public function growthChart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'start' => 'required|date',
+            'end' => 'required|date',
+            'period' => 'required|in:daily,weekly,monthly',
+        ]);
+
+        $start = Carbon::parse($validated['start']);
+        $end = Carbon::parse($validated['end'])->endOfDay();
+        $period = $validated['period'];
+
+        $offices = Office::where('type', '!=', 'admin')
+            ->whereBetween('created_at', [$start, $end])
+            ->get(['created_at']);
+
+        $grouped = $offices->groupBy(function ($office) use ($period) {
+            $date = Carbon::parse($office->created_at);
+
+            return match ($period) {
+                'daily' => $date->format('Y-m-d'),
+                'weekly' => $date->copy()->startOfWeek()->format('Y-m-d'),
+                'monthly' => $date->format('Y-m'),
+            };
+        });
+
+        $current = $start->copy();
+        $data = [];
+
+        while ($current->lte($end)) {
+            $key = match ($period) {
+                'daily' => $current->format('Y-m-d'),
+                'weekly' => $current->copy()->startOfWeek()->format('Y-m-d'),
+                'monthly' => $current->format('Y-m'),
+            };
+
+            $label = match ($period) {
+                'daily' => $current->format('d/m'),
+                'weekly' => $current->copy()->startOfWeek()->format('d/m'),
+                'monthly' => $current->copy()->startOfMonth()->format('M/Y'),
+            };
+
+            $data[] = [
+                'date' => $key,
+                'label' => $label,
+                'count' => $grouped->get($key, collect())->count(),
+            ];
+
+            $current = match ($period) {
+                'daily' => $current->addDay(),
+                'weekly' => $current->addWeek(),
+                'monthly' => $current->addMonth(),
+            };
+        }
+
+        return response()->json($data);
     }
 }

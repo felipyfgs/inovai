@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Office } from '~/types'
+import type { Office, Plan } from '~/types'
 
 const props = defineProps<{ office: Office }>()
 const emit = defineEmits<{ updated: [] }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 const loading = ref(false)
 const toast = useToast()
 const { put } = useApiMutation()
+
+const { data: plansData } = useApi<Plan[]>('/admin/plans')
+const plans = computed(() => (plansData.value ?? []).filter((p: Plan) => p.is_active))
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -25,6 +28,7 @@ const schema = z.object({
   uf: z.string().optional(),
   cep: z.string().optional(),
   is_active: z.boolean(),
+  plan_id: z.number().min(1).optional().or(z.undefined()),
   notes: z.string().optional()
 })
 
@@ -38,32 +42,37 @@ const ufOptions = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ].map(uf => ({ label: uf, value: uf }))
 
-watch(() => props.office, (office) => {
-  if (office) {
-    Object.assign(state, {
-      name: office.name,
-      cnpj: office.cnpj || '',
-      email: office.email || '',
-      phone: office.phone || '',
-      ie: office.ie || '',
-      logradouro: office.logradouro || '',
-      numero: office.numero || '',
-      complemento: office.complemento || '',
-      bairro: office.bairro || '',
-      municipio: office.municipio || '',
-      uf: office.uf || '',
-      cep: office.cep || '',
-      is_active: office.is_active,
-      notes: office.notes || ''
-    })
-    open.value = true
-  }
-}, { immediate: true })
+watch(open, (val) => {
+  if (!val) return
+  const office = props.office
+  if (!office) return
+  Object.assign(state, {
+    name: office.name,
+    cnpj: office.cnpj || '',
+    email: office.email || '',
+    phone: office.phone || '',
+    ie: office.ie || '',
+    logradouro: office.logradouro || '',
+    numero: office.numero || '',
+    complemento: office.complemento || '',
+    bairro: office.bairro || '',
+    municipio: office.municipio || '',
+    uf: office.uf || '',
+    cep: office.cep || '',
+    is_active: office.is_active,
+    plan_id: office.subscription?.plan_id ?? undefined,
+    notes: office.notes || ''
+  })
+})
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    await put(`/admin/offices/${props.office.id}`, event.data)
+    const { plan_id, ...data } = event.data
+    await put(`/admin/offices/${props.office.id}`, data)
+    if (plan_id && plan_id !== props.office.subscription?.plan_id) {
+      await put(`/admin/offices/${props.office.id}/assign-plan`, { plan_id })
+    }
     toast.add({ title: 'Atualizado com sucesso', color: 'success' })
     open.value = false
     emit('updated')
@@ -122,6 +131,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <USwitch v-model="state.is_active" label="Ativo" />
           </UFormField>
         </div>
+
+        <USeparator label="Plano" />
+
+        <UFormField label="Plano" name="plan_id">
+          <USelect
+            v-model="state.plan_id"
+            :items="plans.map(p => ({ label: `${p.name} — R$ ${Number(p.price).toFixed(2).replace('.', ',')}/mês`, value: p.id }))"
+            placeholder="Nenhum plano"
+            class="w-full"
+            value-attrs
+          />
+        </UFormField>
 
         <USeparator label="Endereço" />
 

@@ -10,7 +10,7 @@ class LogoutController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        auth('sanctum')->forgetUser();
 
         return response()->json(['message' => 'Logout realizado com sucesso.']);
     }

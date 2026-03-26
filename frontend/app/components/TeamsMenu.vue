@@ -5,18 +5,27 @@ defineProps<{
   collapsed?: boolean
 }>()
 
-const items = computed<DropdownMenuItem[][]>(() => [
-  [{
-    label: 'InovAI',
-    avatar: { text: 'IA', size: 'xs' as const },
-    active: true
-  }],
-  [{
+const teams = ref([{
+  label: 'InovAI',
+  avatar: {
+    src: 'https://github.com/nuxt.png',
+    alt: 'InovAI'
+  }
+}])
+const selectedTeam = ref(teams.value[0])
+
+const items = computed<DropdownMenuItem[][]>(() => {
+  return [teams.value.map(team => ({
+    ...team,
+    onSelect() {
+      selectedTeam.value = team
+    }
+  })), [{
     label: 'Configurações',
     icon: 'i-lucide-settings',
     to: '/settings'
-  }]
-])
+  }]]
+})
 </script>
 
 <template>
@@ -27,7 +36,8 @@ const items = computed<DropdownMenuItem[][]>(() => [
   >
     <UButton
       v-bind="{
-        label: collapsed ? undefined : 'InovAI',
+        ...selectedTeam,
+        label: collapsed ? undefined : selectedTeam?.label,
         trailingIcon: collapsed ? undefined : 'i-lucide-chevrons-up-down'
       }"
       color="neutral"
@@ -39,10 +49,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
       :ui="{
         trailingIcon: 'text-dimmed'
       }"
-    >
-      <template #leading>
-        <UAvatar text="IA" size="xs" />
-      </template>
-    </UButton>
+    />
   </UDropdownMenu>
 </template>

@@ -6,7 +6,7 @@ import type { Plan } from '~/types'
 const props = defineProps<{ plan: Plan }>()
 const emit = defineEmits<{ updated: [] }>()
 
-const open = ref(false)
+const open = defineModel<boolean>('open', { default: false })
 const loading = ref(false)
 const toast = useToast()
 const { put } = useApiMutation()
@@ -18,26 +18,30 @@ const schema = z.object({
   price: z.coerce.number().min(0, 'Preço deve ser maior ou igual a 0'),
   max_companies: z.coerce.number().int().min(1, 'Mínimo 1 empresa'),
   max_nfs_month: z.coerce.number().int().min(0, 'Mínimo 0'),
-  is_active: z.boolean()
+  is_active: z.boolean(),
+  grace_period_days: z.coerce.number().int().min(0).max(90),
+  max_overdue_days: z.coerce.number().int().min(0).max(365)
 })
 
 type Schema = z.output<typeof schema>
 
 const state = reactive<Partial<Schema>>({})
 
-watch(() => props.plan, (plan) => {
-  if (plan) {
-    Object.assign(state, {
-      name: plan.name,
-      description: plan.description || '',
-      price: plan.price,
-      max_companies: plan.max_companies,
-      max_nfs_month: plan.max_nfs_month,
-      is_active: plan.is_active
-    })
-    open.value = true
-  }
-}, { immediate: true })
+watch(open, (val) => {
+  if (!val) return
+  const plan = props.plan
+  if (!plan) return
+  Object.assign(state, {
+    name: plan.name,
+    description: plan.description || '',
+    price: plan.price,
+    max_companies: plan.max_companies,
+    max_nfs_month: plan.max_nfs_month,
+    is_active: plan.is_active,
+    grace_period_days: plan.grace_period_days,
+    max_overdue_days: plan.max_overdue_days
+  })
+})
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
@@ -57,13 +61,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 <template>
   <UModal
-    v-model="open"
+    v-model:open="open"
     title="Editar Plano"
     description="Atualize os dados do plano."
     :ui="{ content: 'w-full sm:max-w-lg', footer: 'justify-end' }"
   >
-    <slot />
-
     <template #body>
       <UForm
         ref="formRef"
@@ -111,6 +113,28 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
               v-model="state.max_nfs_month"
               type="number"
               min="0"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <UFormField label="Carência (dias)" name="grace_period_days" required>
+            <UInput
+              v-model="state.grace_period_days"
+              type="number"
+              min="0"
+              max="90"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Máx. Dias em Atraso" name="max_overdue_days" required>
+            <UInput
+              v-model="state.max_overdue_days"
+              type="number"
+              min="0"
+              max="365"
               class="w-full"
             />
           </UFormField>

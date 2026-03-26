@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\OfficeController as AdminOfficeController;
 use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\PessoaController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\TransportadoraController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsureActiveSubscription;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\ResolveTenant;
 use App\Models\Company;
@@ -62,41 +64,47 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['company' => $company]);
     });
 
-    // Users management
-    Route::apiResource('users', UserController::class);
-    Route::patch('users/{user}/toggle-active', [UserController::class, 'toggleActive']);
-    Route::get('users/{user}/companies', [UserController::class, 'companies']);
-    Route::post('users/{user}/companies', [UserController::class, 'attachCompanies']);
-    Route::delete('users/{user}/companies/{company}', [UserController::class, 'detachCompany']);
+    // Office-scoped routes (require active subscription)
+    Route::middleware(EnsureActiveSubscription::class)->group(function () {
+        // Users management
+        Route::apiResource('users', UserController::class);
+        Route::patch('users/{user}/toggle-active', [UserController::class, 'toggleActive']);
+        Route::get('users/{user}/companies', [UserController::class, 'companies']);
+        Route::post('users/{user}/companies', [UserController::class, 'attachCompanies']);
+        Route::delete('users/{user}/companies/{company}', [UserController::class, 'detachCompany']);
 
-    // Companies (scoped by office)
-    Route::apiResource('companies', CompanyController::class);
-    Route::post('companies/{company}/certificado', [CompanyController::class, 'uploadCertificado']);
-    Route::get('companies/{company}/users', [CompanyController::class, 'users']);
-    Route::post('companies/{company}/users', [CompanyController::class, 'attachUser']);
-    Route::delete('companies/{company}/users/{user}', [CompanyController::class, 'detachUser']);
+        // Companies (scoped by office)
+        Route::apiResource('companies', CompanyController::class);
+        Route::post('companies/{company}/certificado', [CompanyController::class, 'uploadCertificado']);
+        Route::get('companies/{company}/users', [CompanyController::class, 'users']);
+        Route::post('companies/{company}/users', [CompanyController::class, 'attachUser']);
+        Route::delete('companies/{company}/users/{user}', [CompanyController::class, 'detachUser']);
 
-    // Dashboard
-    Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);
+        // Dashboard
+        Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);
 
-    // Routes that require a company context (X-Company-Id header)
-    Route::middleware(ResolveTenant::class)->group(function () {
-        // Dashboard per company
-        Route::get('/dashboard/company', [CompanyDashboardController::class, 'index']);
+        // Routes that require a company context (X-Company-Id header)
+        Route::middleware(ResolveTenant::class)->group(function () {
+            // Dashboard per company
+            Route::get('/dashboard/company', [CompanyDashboardController::class, 'index']);
 
-        // Cadastros
-        Route::apiResource('pessoas', PessoaController::class);
-        Route::apiResource('produtos', ProdutoController::class);
-        Route::apiResource('transportadoras', TransportadoraController::class);
+            // Cadastros
+            Route::apiResource('pessoas', PessoaController::class);
+            Route::apiResource('produtos', ProdutoController::class);
+            Route::apiResource('transportadoras', TransportadoraController::class);
 
-        // Comercial
-        Route::apiResource('orcamentos', OrcamentoController::class);
-        Route::post('orcamentos/{orcamento}/converter', [OrcamentoController::class, 'convertToPedido']);
-        Route::apiResource('pedidos', PedidoController::class);
+            // Comercial
+            Route::apiResource('orcamentos', OrcamentoController::class);
+            Route::post('orcamentos/{orcamento}/converter', [OrcamentoController::class, 'convertToPedido']);
+            Route::apiResource('pedidos', PedidoController::class);
+        });
     });
 
     // Admin routes (only admin role)
     Route::prefix('admin')->middleware(EnsureAdmin::class)->group(function () {
+        // Admin users
+        Route::apiResource('admins', AdminUserController::class);
+
         // Plans
         Route::apiResource('plans', PlanController::class);
 
@@ -108,7 +116,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Invoices (cobranças)
         Route::get('invoices/dashboard', [AdminInvoiceController::class, 'dashboard']);
+        Route::get('invoices/chart', [AdminInvoiceController::class, 'chart']);
+        Route::get('invoices/plans-chart', [AdminInvoiceController::class, 'plansChart']);
+        Route::get('invoices/status-chart', [AdminInvoiceController::class, 'statusChart']);
+        Route::get('invoices/overdue-chart', [AdminInvoiceController::class, 'overdueChart']);
         Route::post('invoices/generate-monthly', [AdminInvoiceController::class, 'generateMonthly']);
         Route::apiResource('invoices', AdminInvoiceController::class);
+
+        // Offices charts
+        Route::get('offices/growth-chart', [AdminOfficeController::class, 'growthChart']);
     });
 });

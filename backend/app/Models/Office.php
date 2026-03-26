@@ -24,6 +24,8 @@ class Office extends Model
         'cep',
         'ie',
         'is_active',
+        'inactivated_at',
+        'inactivation_reason',
         'type',
         'parent_office_id',
         'notes',
@@ -33,8 +35,11 @@ class Office extends Model
     {
         return [
             'is_active' => 'boolean',
+            'inactivated_at' => 'datetime',
         ];
     }
+
+    protected static function booted(): void {}
 
     public function users(): HasMany
     {

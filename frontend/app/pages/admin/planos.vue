@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { Plan } from '~/types'
 
+const UButton = resolveComponent('UButton')
+const UDropdownMenu = resolveComponent('UDropdownMenu')
+
 definePageMeta({ middleware: 'admin' })
 
 const { data, refresh } = useApi<Plan[]>('/admin/plans', { lazy: true })
@@ -8,6 +11,8 @@ const { data, refresh } = useApi<Plan[]>('/admin/plans', { lazy: true })
 const plans = computed(() => data.value || [])
 
 const deletingPlan = ref<Plan | null>(null)
+const editingPlan = ref<Plan | null>(null)
+const editOpen = ref(false)
 </script>
 
 <template>
@@ -69,31 +74,55 @@ const deletingPlan = ref<Plan | null>(null)
               <span class="text-muted">NFes/Mês</span>
               <span class="font-medium">{{ plan.max_nfs_month === 0 ? 'Ilimitado' : plan.max_nfs_month }}</span>
             </div>
+            <div class="flex justify-between">
+              <span class="text-muted">Carência</span>
+              <span class="font-medium">{{ plan.grace_period_days }} dias</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-muted">Máx. Atraso</span>
+              <span class="font-medium">{{ plan.max_overdue_days }} dias</span>
+            </div>
           </div>
 
           <template #footer>
-            <div class="flex gap-2">
-              <AdminPlanosEditModal :plan="plan" @updated="refresh()">
-                <UButton
-                  variant="outline"
-                  size="sm"
-                  icon="i-lucide-pencil"
-                  class="flex-1"
-                />
-              </AdminPlanosEditModal>
+            <UDropdownMenu
+              :items="[
+                { type: 'label' as const, label: 'Ações' },
+                {
+                  label: 'Editar',
+                  icon: 'i-lucide-pencil',
+                  onSelect: () => { editingPlan = plan; editOpen = true }
+                },
+                {
+                  label: 'Excluir',
+                  icon: 'i-lucide-trash',
+                  color: 'error',
+                  onSelect: () => { deletingPlan = plan }
+                }
+              ]"
+              :content="{ align: 'end' }"
+            >
               <UButton
+                label="Ações"
+                icon="i-lucide-ellipsis-vertical"
+                color="neutral"
                 variant="outline"
-                color="error"
-                size="sm"
-                icon="i-lucide-trash"
-                @click="deletingPlan = plan"
+                block
+                class="flex-1"
               />
-            </div>
+            </UDropdownMenu>
           </template>
         </UCard>
       </div>
     </template>
   </UDashboardPanel>
+
+  <AdminPlanosEditModal
+    v-if="editingPlan"
+    v-model:open="editOpen"
+    :plan="editingPlan"
+    @updated="() => { editingPlan = null; refresh() }"
+  />
 
   <AdminPlanosDeleteModal
     v-if="deletingPlan"

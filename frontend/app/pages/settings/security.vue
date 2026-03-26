@@ -8,6 +8,8 @@ definePageMeta({
 
 const toast = useToast()
 const loading = ref(false)
+const deleteOpen = ref(false)
+const deleteLoading = ref(false)
 
 const passwordSchema = z.object({
   current_password: z.string().min(6, 'Mínimo 6 caracteres'),
@@ -45,6 +47,21 @@ function resetForm() {
   state.current_password = ''
   state.password = ''
   state.password_confirmation = ''
+}
+
+async function deleteAccount() {
+  deleteLoading.value = true
+  try {
+    const { del } = useApiMutation()
+    await del('/me')
+    toast.add({ title: 'Conta excluída com sucesso', color: 'success' })
+    await navigateTo('/login')
+  } catch (e: unknown) {
+    const err = e as { response?: { _data?: { message?: string } } }
+    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao excluir conta.', color: 'error' })
+  } finally {
+    deleteLoading.value = false
+  }
 }
 </script>
 
@@ -105,8 +122,30 @@ function resetForm() {
       class="bg-gradient-to-tl from-error/10 from-5% to-default"
     >
       <template #footer>
-        <UButton label="Excluir conta" color="error" />
+        <UButton label="Excluir conta" color="error" @click="deleteOpen = true" />
       </template>
     </UPageCard>
+
+    <UModal
+      v-model:open="deleteOpen"
+      title="Excluir conta"
+      description="Tem certeza? Esta ação não pode ser desfeita. Todas as informações serão excluídas permanentemente."
+      :ui="{ footer: 'justify-end' }"
+    >
+      <template #footer>
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="outline"
+          @click="deleteOpen = false"
+        />
+        <UButton
+          label="Excluir permanentemente"
+          color="error"
+          :loading="deleteLoading"
+          @click="deleteAccount"
+        />
+      </template>
+    </UModal>
   </div>
 </template>

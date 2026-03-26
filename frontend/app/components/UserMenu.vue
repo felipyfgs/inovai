@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import type { AuthUser } from '~/types'
 
 defineProps<{
   collapsed?: boolean
@@ -7,37 +8,43 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
+const { user, logout } = useSanctumAuth<AuthUser>()
+const router = useRouter()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
-const user = ref({
-  name: 'Benjamin Canac',
-  avatar: {
-    src: 'https://github.com/benjamincanac.png',
-    alt: 'Benjamin Canac'
+async function handleLogout() {
+  try {
+    await logout()
+  } catch {
+    router.push('/login')
   }
-})
+}
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
-  label: user.value.name,
-  avatar: user.value.avatar
+  label: user.value?.name || 'Usuário',
+  avatar: user.value
+    ? {
+        src: undefined,
+        alt: user.value.name,
+        initials: user.value.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+      }
+    : undefined
 }], [{
-  label: 'Profile',
-  icon: 'i-lucide-user'
-}, {
-  label: 'Billing',
-  icon: 'i-lucide-credit-card'
-}, {
-  label: 'Settings',
-  icon: 'i-lucide-settings',
+  label: 'Meu Perfil',
+  icon: 'i-lucide-user',
   to: '/settings'
+}, {
+  label: 'Configurações',
+  icon: 'i-lucide-settings',
+  to: '/settings/security'
 }], [{
-  label: 'Theme',
+  label: 'Tema',
   icon: 'i-lucide-palette',
   children: [{
-    label: 'Primary',
+    label: 'Primária',
     slot: 'chip',
     chip: appConfig.ui.colors.primary,
     content: {
@@ -52,12 +59,11 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       type: 'checkbox',
       onSelect: (e) => {
         e.preventDefault()
-
         appConfig.ui.colors.primary = color
       }
     }))
   }, {
-    label: 'Neutral',
+    label: 'Neutra',
     slot: 'chip',
     chip: appConfig.ui.colors.neutral === 'neutral' ? 'old-neutral' : appConfig.ui.colors.neutral,
     content: {
@@ -72,26 +78,24 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       checked: appConfig.ui.colors.neutral === color,
       onSelect: (e) => {
         e.preventDefault()
-
         appConfig.ui.colors.neutral = color
       }
     }))
   }]
 }, {
-  label: 'Appearance',
+  label: 'Aparência',
   icon: 'i-lucide-sun-moon',
   children: [{
-    label: 'Light',
+    label: 'Claro',
     icon: 'i-lucide-sun',
     type: 'checkbox',
     checked: colorMode.value === 'light',
     onSelect(e: Event) {
       e.preventDefault()
-
       colorMode.preference = 'light'
     }
   }, {
-    label: 'Dark',
+    label: 'Escuro',
     icon: 'i-lucide-moon',
     type: 'checkbox',
     checked: colorMode.value === 'dark',
@@ -105,49 +109,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }
   }]
 }], [{
-  label: 'Templates',
-  icon: 'i-lucide-layout-template',
-  children: [{
-    label: 'Starter',
-    to: 'https://starter-template.nuxt.dev/'
-  }, {
-    label: 'Landing',
-    to: 'https://landing-template.nuxt.dev/'
-  }, {
-    label: 'Docs',
-    to: 'https://docs-template.nuxt.dev/'
-  }, {
-    label: 'SaaS',
-    to: 'https://saas-template.nuxt.dev/'
-  }, {
-    label: 'Dashboard',
-    to: 'https://dashboard-template.nuxt.dev/',
-    color: 'primary',
-    checked: true,
-    type: 'checkbox'
-  }, {
-    label: 'Chat',
-    to: 'https://chat-template.nuxt.dev/'
-  }, {
-    label: 'Portfolio',
-    to: 'https://portfolio-template.nuxt.dev/'
-  }, {
-    label: 'Changelog',
-    to: 'https://changelog-template.nuxt.dev/'
-  }]
-}], [{
-  label: 'Documentation',
-  icon: 'i-lucide-book-open',
-  to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-  target: '_blank'
-}, {
-  label: 'GitHub repository',
-  icon: 'i-simple-icons-github',
-  to: 'https://github.com/nuxt-ui-templates/dashboard',
-  target: '_blank'
-}, {
-  label: 'Log out',
-  icon: 'i-lucide-log-out'
+  label: 'Sair',
+  icon: 'i-lucide-log-out',
+  onSelect: handleLogout
 }]]))
 </script>
 
@@ -159,8 +123,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   >
     <UButton
       v-bind="{
-        ...user,
-        label: collapsed ? undefined : user?.name,
+        label: collapsed ? undefined : user?.name || 'Usuário',
         trailingIcon: collapsed ? undefined : 'i-lucide-chevrons-up-down'
       }"
       color="neutral"

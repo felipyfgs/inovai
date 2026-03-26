@@ -9,6 +9,7 @@ const open = ref(false)
 const loading = ref(false)
 const { post } = useApiMutation()
 const { handleError } = useApiError()
+const formRef = useTemplateRef('formRef')
 
 const { data: plansData } = useApi<Plan[]>('/admin/plans')
 
@@ -268,7 +269,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         label="Cadastrar"
         color="primary"
         :loading="loading"
-        @click="$refs.formRef?.submit()"
+        @click="formRef?.submit()"
       />
     </template>
   </UModal>

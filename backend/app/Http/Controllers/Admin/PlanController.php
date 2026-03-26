@@ -43,6 +43,8 @@ class PlanController extends Controller
             'max_nfs_month' => 'required|integer|min:0',
             'features' => 'nullable|array',
             'is_active' => 'boolean',
+            'grace_period_days' => 'nullable|integer|min:0|max:90',
+            'max_overdue_days' => 'nullable|integer|min:0|max:365',
         ]);
 
         $plan = Plan::create($validated);
@@ -60,6 +62,8 @@ class PlanController extends Controller
             'max_nfs_month' => 'sometimes|integer|min:0',
             'features' => 'nullable|array',
             'is_active' => 'boolean',
+            'grace_period_days' => 'nullable|integer|min:0|max:90',
+            'max_overdue_days' => 'nullable|integer|min:0|max:365',
         ]);
 
         $plan->update($validated);

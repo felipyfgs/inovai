@@ -1,6 +1,6 @@
 import type { AuthUser } from '~/types'
 
-type Module = 'admin-dashboard' | 'admin-escritorios' | 'admin-planos' | 'admin-cobrancas' | 'dashboard-office' | 'empresas' | 'usuarios' | 'inicio' | 'cadastros' | 'comercial' | 'fiscal' | 'estoque' | 'config'
+type Module = 'admin-dashboard' | 'admin-escritorios' | 'admin-planos' | 'admin-cobrancas' | 'admin-admins' | 'dashboard-office' | 'empresas' | 'usuarios' | 'inicio' | 'cadastros' | 'comercial' | 'fiscal' | 'estoque' | 'config'
 
 type EffectiveRole = 'platform_admin' | 'accountant' | 'company_user'
 
@@ -26,7 +26,7 @@ export function useAccessContext() {
   })
 
   const moduleMap: Record<EffectiveRole, Module[]> = {
-    platform_admin: ['admin-dashboard', 'admin-escritorios', 'admin-planos', 'admin-cobrancas', 'config'],
+    platform_admin: ['admin-dashboard', 'admin-escritorios', 'admin-planos', 'admin-cobrancas', 'admin-admins', 'config'],
     accountant: ['inicio', 'dashboard-office', 'empresas', 'usuarios', 'cadastros', 'comercial', 'fiscal', 'estoque', 'config'],
     company_user: ['inicio', 'cadastros', 'comercial', 'fiscal', 'estoque', 'config']
   }

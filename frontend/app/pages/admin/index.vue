@@ -1,46 +1,66 @@
 <script setup lang="ts">
-import type { AdminDashboard } from '~/types'
+import type { AdminDashboard, Period, Range } from '~/types'
 
 definePageMeta({ middleware: 'admin' })
 
-const { data: stats, status } = useApi<AdminDashboard>('/admin/invoices/dashboard', { lazy: true })
+const range = shallowRef<Range>({
+  start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  end: new Date()
+})
+const period = ref<Period>('daily')
+
+const queryParams = computed(() => ({
+  start: range.value.start ? range.value.start.toISOString().split('T')[0] : undefined,
+  end: range.value.end ? range.value.end.toISOString().split('T')[0] : undefined
+}))
+
+const { data: stats, status } = useApi<AdminDashboard>('/admin/invoices/dashboard', {
+  lazy: true,
+  query: queryParams
+})
 
 const statCards = computed(() => [
   {
-    label: 'Receita do Mês (MRR)',
-    value: stats.value?.mrr ?? 0,
+    label: 'Receita no Período',
+    value: stats.value?.revenue ?? 0,
     icon: 'i-lucide-trending-up',
-    format: 'currency'
+    format: 'currency' as const,
+    variation: stats.value?.revenue_variation ?? 0
   },
   {
-    label: 'Mês Anterior',
-    value: stats.value?.last_month_revenue ?? 0,
+    label: 'Receita Anterior',
+    value: stats.value?.previous_revenue ?? 0,
     icon: 'i-lucide-calendar',
-    format: 'currency'
+    format: 'currency' as const,
+    variation: null as number | null
   },
   {
     label: 'A Receber',
     value: stats.value?.pending ?? 0,
     icon: 'i-lucide-clock',
-    format: 'currency'
+    format: 'currency' as const,
+    variation: null as number | null
   },
   {
     label: 'Vencido',
     value: stats.value?.overdue ?? 0,
     icon: 'i-lucide-alert-circle',
-    format: 'currency'
+    format: 'currency' as const,
+    variation: null as number | null
   },
   {
     label: 'Total de Clientes',
     value: stats.value?.total_offices ?? 0,
     icon: 'i-lucide-users',
-    format: 'number'
+    format: 'number' as const,
+    variation: null as number | null
   },
   {
     label: 'Inadimplentes',
     value: stats.value?.inadimplentes ?? 0,
     icon: 'i-lucide-user-x',
-    format: 'number'
+    format: 'number' as const,
+    variation: null as number | null
   }
 ])
 </script>
@@ -53,6 +73,13 @@ const statCards = computed(() => [
           <UDashboardSidebarCollapse />
         </template>
       </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <template #left>
+          <AdminDashboardDateRangePicker v-model="range" class="-ms-1" />
+          <AdminDashboardPeriodSelect v-model="period" :range="range" />
+        </template>
+      </UDashboardToolbar>
     </template>
 
     <template #body>
@@ -85,9 +112,34 @@ const statCards = computed(() => [
                   {{ card.value }}
                 </template>
               </span>
+
+              <UBadge
+                v-if="card.variation !== null"
+                :color="card.variation > 0 ? 'success' : 'error'"
+                variant="subtle"
+                class="text-xs"
+              >
+                {{ card.variation > 0 ? '+' : '' }}{{ card.variation }}%
+              </UBadge>
             </div>
           </UPageCard>
         </UPageGrid>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div class="lg:col-span-3">
+            <AdminDashboardChart :period="period" :range="range" />
+          </div>
+          <div class="lg:col-span-2">
+            <AdminDashboardPlansChart />
+          </div>
+        </div>
+
+        <AdminDashboardStatusChart :period="period" :range="range" />
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <AdminDashboardGrowthChart :period="period" :range="range" />
+          <AdminDashboardOverdueChart :period="period" :range="range" />
+        </div>
 
         <UPageCard
           v-if="stats"
@@ -108,7 +160,7 @@ const statCards = computed(() => [
           </p>
         </UPageCard>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UButton
             label="Gerir Contadores"
             icon="i-lucide-users"
@@ -121,14 +173,6 @@ const statCards = computed(() => [
             label="Cobranças"
             icon="i-lucide-receipt"
             to="/admin/cobrancas"
-            variant="outline"
-            color="neutral"
-            block
-          />
-          <UButton
-            label="Mapa de Empresas"
-            icon="i-lucide-map"
-            to="/admin/mapa"
             variant="outline"
             color="neutral"
             block
