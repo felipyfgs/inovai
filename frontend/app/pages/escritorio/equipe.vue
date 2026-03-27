@@ -180,8 +180,6 @@ const columns: TableColumn<AppUser>[] = [
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
           <UsuariosAddModal :office-id="currentOffice?.id" @created="refresh()" />
         </template>
       </UDashboardNavbar>

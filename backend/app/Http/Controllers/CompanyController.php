@@ -4,12 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Office;
+use App\Models\OfficePlan;
 use App\Models\User;
+use App\Services\CompanyModuleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class CompanyController extends Controller
 {
+    public function __construct(
+        private CompanyModuleService $moduleService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -17,17 +26,17 @@ class CompanyController extends Controller
 
         if ($user->hasRole('admin')) {
             if ($officeId) {
-                $companies = Company::with('office')
+                $companies = Company::with('office', 'modules')
                     ->where('office_id', $officeId)
                     ->paginate($request->get('per_page', 200));
             } else {
-                $companies = Company::with('office')->paginate(20);
+                $companies = Company::with('office', 'modules')->paginate(20);
             }
         } elseif ($user->hasRole('company_user')) {
-            $companies = $user->companies()->with('office')
+            $companies = $user->companies()->with('office', 'modules')
                 ->paginate($request->get('per_page', 200));
         } else {
-            $companies = Company::with('office')
+            $companies = Company::with('office', 'modules')
                 ->where('office_id', $user->office_id)
                 ->paginate($request->get('per_page', 200));
         }
@@ -55,6 +64,11 @@ class CompanyController extends Controller
             'telefone' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'ambiente' => ['nullable', 'string', 'in:homologacao,producao'],
+            'profile_id' => ['nullable', 'exists:office_plans,id'],
+            'owner_name' => ['required', 'string', 'max:255'],
+            'owner_email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'owner_password' => ['required', 'confirmed', Password::defaults()],
+            'owner_phone' => ['nullable', 'string', 'max:20'],
         ]);
 
         $user = $request->user();
@@ -87,19 +101,62 @@ class CompanyController extends Controller
             }
         }
 
-        $company = Company::create($validated);
+        $officePlanId = $validated['profile_id'] ?? null;
+        $ownerName = $validated['owner_name'];
+        $ownerEmail = $validated['owner_email'];
+        $ownerPassword = $validated['owner_password'];
+        $ownerPhone = $validated['owner_phone'] ?? null;
 
-        // Assign the creator to the company
-        $request->user()->companies()->attach($company->id);
+        unset(
+            $validated['profile_id'],
+            $validated['owner_name'],
+            $validated['owner_email'],
+            $validated['owner_password'],
+            $validated['owner_password_confirmation'],
+            $validated['owner_phone']
+        );
 
-        return response()->json($company, 201);
+        $validated['office_plan_id'] = $officePlanId;
+
+        $company = DB::transaction(function () use ($validated, $ownerName, $ownerEmail, $ownerPassword, $ownerPhone, $officePlanId, $user) {
+            $company = Company::create($validated);
+
+            $owner = User::create([
+                'name' => $ownerName,
+                'email' => $ownerEmail,
+                'password' => Hash::make($ownerPassword),
+                'phone' => $ownerPhone,
+                'office_id' => $validated['office_id'],
+                'must_change_password' => true,
+            ]);
+            $owner->assignRole('company_user');
+
+            $company->users()->attach($owner->id);
+            $user->companies()->attach($company->id);
+
+            if ($officePlanId) {
+                $officePlan = OfficePlan::find($officePlanId);
+                if ($officePlan && $officePlan->office_id == $validated['office_id']) {
+                    foreach ($officePlan->modules as $module) {
+                        $company->modules()->create([
+                            'module' => $module,
+                            'is_active' => true,
+                        ]);
+                    }
+                }
+            }
+
+            return $company;
+        });
+
+        return response()->json($company->load('modules'), 201);
     }
 
     public function show(Request $request, Company $company): JsonResponse
     {
         $this->authorizeCompany($request, $company);
 
-        return response()->json($company->load(['office']));
+        return response()->json($company->load(['office', 'modules']));
     }
 
     public function update(Request $request, Company $company): JsonResponse
@@ -226,6 +283,41 @@ class CompanyController extends Controller
         $company->users()->detach($user->id);
 
         return response()->json(['message' => 'Usuário desvinculado da empresa.']);
+    }
+
+    public function updateOwner(Request $request, Company $company): JsonResponse
+    {
+        $this->authorizeCompany($request, $company);
+
+        $validated = $request->validate([
+            'owner_name' => ['sometimes', 'string', 'max:255'],
+            'owner_email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email'],
+            'owner_password' => ['nullable', 'confirmed', Password::defaults()],
+            'owner_phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $owner = $company->users()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'company_user'))
+            ->first();
+
+        if (! $owner) {
+            return response()->json(['message' => 'Nenhum proprietário vinculado a esta empresa.'], 404);
+        }
+
+        $updateData = array_filter([
+            'name' => $validated['owner_name'] ?? null,
+            'email' => $validated['owner_email'] ?? null,
+            'phone' => $validated['owner_phone'] ?? null,
+        ], fn ($v) => $v !== null);
+
+        if (! empty($validated['owner_password'])) {
+            $updateData['password'] = Hash::make($validated['owner_password']);
+            $updateData['must_change_password'] = true;
+        }
+
+        $owner->update($updateData);
+
+        return response()->json(['message' => 'Dados do proprietário atualizados.']);
     }
 
     private function authorizeCompany(Request $request, Company $company): void

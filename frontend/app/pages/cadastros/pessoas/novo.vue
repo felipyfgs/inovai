@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { BreadcrumbItem, FormSubmitEvent } from '@nuxt/ui'
+import type { Pessoa } from '~/types'
+import { UButton } from '#components'
 import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-
-const emit = defineEmits<{ created: [] }>()
 
 const schema = z.object({
   tipo: z.enum(['cliente', 'fornecedor', 'ambos']),
@@ -28,13 +28,13 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
-const open = ref(false)
-const loading = ref(false)
+const router = useRouter()
 const toast = useToast()
 const { post } = useApiMutation()
 const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
 
+const loading = ref(false)
 const state = reactive<Partial<Schema>>({
   tipo: 'cliente',
   tipo_pessoa: 'PJ',
@@ -57,23 +57,18 @@ const state = reactive<Partial<Schema>>({
   observacoes: ''
 })
 
-function resetForm() {
-  Object.assign(state, {
-    tipo: 'cliente', tipo_pessoa: 'PJ', razao_social: '', fantasia: '', cpf_cnpj: '',
-    ie: '', ind_ie: 1, logradouro: '', numero: '', complemento: '', bairro: '',
-    municipio: '', municipio_ibge: '', uf: '', cep: '', telefone: '', celular: '',
-    email: '', observacoes: ''
-  })
-}
+const breadcrumbs: BreadcrumbItem[] = [
+  { label: 'Cadastros', icon: 'i-lucide-folder', to: '/cadastros/pessoas' },
+  { label: 'Pessoas', icon: 'i-lucide-users', to: '/cadastros/pessoas' },
+  { label: 'Nova Pessoa' }
+]
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    await post('/pessoas', event.data)
+    const pessoa = await post<Pessoa>('/pessoas', event.data)
     toast.add({ title: 'Pessoa criada', description: event.data.razao_social, color: 'success' })
-    open.value = false
-    resetForm()
-    emit('created')
+    router.push(`/cadastros/pessoas/${pessoa.id}`)
   } catch (error) {
     toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao criar.', color: 'error' })
   } finally {
@@ -87,13 +82,37 @@ function handleSubmit() {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Nova Pessoa"
-    description="Adicionar cliente, fornecedor ou ambos"
-    :ui="{ content: 'w-full sm:max-w-4xl', footer: 'justify-end' }"
-  >
-    <UButton label="Nova Pessoa" icon="i-lucide-plus" />
+  <UDashboardPanel id="pessoa-novo">
+    <template #header>
+      <UDashboardNavbar title="Nova Pessoa">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+
+        <template #right>
+          <UBreadcrumb :items="breadcrumbs" />
+        </template>
+      </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <div />
+
+        <template #right>
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="outline"
+            @click="router.push('/cadastros/pessoas')"
+          />
+          <UButton
+            label="Criar Pessoa"
+            color="primary"
+            :loading="loading"
+            @click="handleSubmit"
+          />
+        </template>
+      </UDashboardToolbar>
+    </template>
 
     <template #body>
       <UForm
@@ -103,12 +122,14 @@ function handleSubmit() {
         class="space-y-6"
         @submit="onSubmit"
       >
-        <!-- Seção: Tipo e Classificação -->
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-tag text-muted" />
-            Tipo e Classificação
-          </h3>
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-tag text-muted" />
+              Tipo e Classificação
+            </h3>
+          </template>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Tipo" name="tipo" required>
               <USelect
@@ -134,16 +155,16 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-user text-muted" />
+              Dados Pessoais
+            </h3>
+          </template>
 
-        <!-- Seção: Dados Pessoais -->
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-user text-muted" />
-            Dados Pessoais
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField
               label="Razão Social / Nome Completo"
@@ -175,16 +196,16 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-map-pin text-muted" />
+              Endereço
+            </h3>
+          </template>
 
-        <!-- Seção: Endereço -->
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-map-pin text-muted" />
-            Endereço
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
             <UFormField label="Logradouro" name="logradouro" class="sm:col-span-4">
               <UInput v-model="state.logradouro" class="w-full" placeholder="Rua, Avenida, etc." />
@@ -215,16 +236,16 @@ function handleSubmit() {
               </UFormField>
             </div>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-phone text-muted" />
+              Contato
+            </h3>
+          </template>
 
-        <!-- Seção: Contato -->
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-phone text-muted" />
-            Contato
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <UFormField label="Telefone" name="telefone">
               <UInput v-model="state.telefone" class="w-full" placeholder="(00) 0000-0000" />
@@ -241,33 +262,19 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <!-- Seção: Observações -->
-        <UFormField label="Observações" name="observacoes">
-          <UTextarea
-            v-model="state.observacoes"
-            class="w-full"
-            placeholder="Informações adicionais..."
-            :rows="3"
-          />
-        </UFormField>
+        <UCard>
+          <UFormField label="Observações" name="observacoes">
+            <UTextarea
+              v-model="state.observacoes"
+              class="w-full"
+              placeholder="Informações adicionais..."
+              :rows="3"
+            />
+          </UFormField>
+        </UCard>
       </UForm>
     </template>
-
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Criar Pessoa"
-        color="primary"
-        :loading="loading"
-        @click="handleSubmit"
-      />
-    </template>
-  </UModal>
+  </UDashboardPanel>
 </template>

@@ -1,12 +1,49 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import type { Company, PaginatedResponse } from '~/types'
 
 const toast = useToast()
 const { canSee, isPlatformAdmin } = useAccessContext()
+const { initializeFromCompanies } = useCurrentCompany()
+const { activeModules } = useCompanyModules()
+
+const { data: companiesData } = useApi<PaginatedResponse<Company>>('/companies', {
+  lazy: true,
+  query: { per_page: 200 }
+})
+
+watch(() => companiesData.value?.data, (list) => {
+  if (list && list.length > 0) {
+    initializeFromCompanies(list, false)
+  }
+}, { immediate: true })
 
 const open = ref(false)
 
-const companyLinks = [{
+function getFiscalChildren(): NavigationMenuItem[] {
+  const items: NavigationMenuItem[] = []
+  const closeSidebar = () => {
+    open.value = false
+  }
+  if (activeModules.value.includes('nfe')) {
+    items.push({ label: 'NF-e', to: '/fiscal/nfe', onSelect: closeSidebar })
+  }
+  if (activeModules.value.includes('nfce')) {
+    items.push({ label: 'NFC-e', to: '/fiscal/nfce', onSelect: closeSidebar })
+  }
+  if (activeModules.value.includes('cte')) {
+    items.push({ label: 'CT-e', to: '/fiscal/cte', onSelect: closeSidebar })
+  }
+  if (activeModules.value.includes('mdfe')) {
+    items.push({ label: 'MDF-e', to: '/fiscal/mdfe', onSelect: closeSidebar })
+  }
+  if (activeModules.value.includes('nfse')) {
+    items.push({ label: 'NFS-e', to: '/fiscal/nfse', onSelect: closeSidebar })
+  }
+  return items
+}
+
+const companyLinks = computed(() => [{
   label: 'Início',
   icon: 'i-lucide-house',
   to: '/',
@@ -67,37 +104,7 @@ const companyLinks = [{
   icon: 'i-lucide-file-text',
   type: 'trigger' as const,
   module: 'fiscal',
-  children: [{
-    label: 'NF-e',
-    to: '/fiscal/nfe',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'NFC-e',
-    to: '/fiscal/nfce',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'CT-e',
-    to: '/fiscal/cte',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'MDF-e',
-    to: '/fiscal/mdfe',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'NFS-e',
-    to: '/fiscal/nfse',
-    onSelect: () => {
-      open.value = false
-    }
-  }]
+  children: getFiscalChildren()
 }, {
   label: 'Financeiro',
   icon: 'i-lucide-wallet',
@@ -118,7 +125,7 @@ const companyLinks = [{
   }]
 }, {
   label: 'Restaurante',
-  icon: 'i-lucide utensils',
+  icon: 'i-lucide-utensils',
   to: '/restaurante',
   module: 'restaurante',
   onSelect: () => {
@@ -135,11 +142,33 @@ const companyLinks = [{
 }, {
   label: 'Escritório',
   icon: 'i-lucide-building',
-  to: '/escritorio',
+  type: 'trigger' as const,
   module: 'dashboard-office',
-  onSelect: () => {
-    open.value = false
-  }
+  children: [{
+    label: 'Início',
+    to: '/escritorio',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Planos',
+    to: '/escritorio/planos',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Equipe',
+    to: '/escritorio/equipe',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Assinatura',
+    to: '/assinatura',
+    onSelect: () => {
+      open.value = false
+    }
+  }]
 }, {
   label: 'Empresas',
   icon: 'i-lucide-building-2',
@@ -156,7 +185,7 @@ const companyLinks = [{
   onSelect: () => {
     open.value = false
   }
-}]
+}])
 
 const configLink = {
   label: 'Configurações',
@@ -248,7 +277,7 @@ const allLinks = computed<(NavigationMenuItem & { module?: string })[]>(() => {
   if (isPlatformAdmin.value) {
     return [...adminLinks, configLink]
   }
-  return [...companyLinks, configLink]
+  return [...companyLinks.value, configLink]
 })
 
 const links = computed<NavigationMenuItem[][]>(() => [
@@ -307,6 +336,7 @@ onMounted(async () => {
       </template>
 
       <template #default="{ collapsed }">
+        <CompanyContextIndicator v-if="!collapsed" />
         <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
 
         <UNavigationMenu

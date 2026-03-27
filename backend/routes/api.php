@@ -11,21 +11,23 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\CompanyModuleController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\CteController;
 use App\Http\Controllers\EmitenteController;
 use App\Http\Controllers\EstoqueController;
 use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\MdfeController;
-use App\Http\Controllers\NfseController;
-use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\NfeController;
+use App\Http\Controllers\NfseController;
 use App\Http\Controllers\OfficeDashboardController;
+use App\Http\Controllers\OfficePlanController;
 use App\Http\Controllers\OfficeProfileController;
 use App\Http\Controllers\OrcamentoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PessoaController;
 use App\Http\Controllers\ProdutoController;
+use App\Http\Controllers\RestauranteController;
 use App\Http\Controllers\TransportadoraController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureActiveSubscription;
@@ -89,6 +91,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('companies/{company}/users', [CompanyController::class, 'users']);
         Route::post('companies/{company}/users', [CompanyController::class, 'attachUser']);
         Route::delete('companies/{company}/users/{user}', [CompanyController::class, 'detachUser']);
+        Route::put('companies/{company}/owner', [CompanyController::class, 'updateOwner']);
+
+        // Company modules
+        Route::get('companies/{company}/modules', [CompanyModuleController::class, 'index']);
+        Route::put('companies/{company}/modules', [CompanyModuleController::class, 'update']);
+
+        // Office plans
+        Route::apiResource('office-plans', OfficePlanController::class);
 
         // Dashboard
         Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { BreadcrumbItem, FormSubmitEvent } from '@nuxt/ui'
 import type { Pessoa, PaginatedResponse } from '~/types'
 
-const emit = defineEmits<{ created: [] }>()
+import { UButton } from '#components'
 
 const nfeSchema = z.object({
   chave_nfe: z.string().length(44, 'Deve ter 44 caracteres').optional().or(z.literal(''))
@@ -53,13 +53,14 @@ const TOMADOR_OPTIONS = [
   { label: '3 - Destinatário', value: 3 }
 ]
 
-const open = ref(false)
-const loading = ref(false)
+const router = useRouter()
 const toast = useToast()
-const { post } = useApiMutation()
+const { createCte } = useCte()
 const { currentCompany } = useCurrentCompany()
 const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
+
+const loading = ref(false)
 
 const { data: pessoasData } = useApi<PaginatedResponse<Pessoa>>('/pessoas', {
   lazy: true,
@@ -115,32 +116,27 @@ watch(valorTotal, (val) => {
   state.valor_total = Number(val.toFixed(2))
 })
 
-function resetForm() {
-  Object.assign(state, {
-    natureza_operacao: 'Prestação de Serviço de Transporte',
-    cfop: '', modal: 1,
-    data_emissao: new Date().toISOString().split('T')[0] as string,
-    remetente_id: undefined, destinatario_id: undefined,
-    expedidor_id: null, recebedor_id: null, tomador_id: null,
-    tomador_tipo: 0,
-    valor_servico: 0, valor_receber: 0, valor_icms: 0, valor_total: 0,
-    uf_inicio: '', uf_fim: '', informacoes_adicionais: ''
-  })
-  nfes.value = []
+const breadcrumbs: BreadcrumbItem[] = [
+  { label: 'Fiscal', icon: 'i-lucide-file-text', to: '/fiscal/cte' },
+  { label: 'CT-e', icon: 'i-lucide-truck', to: '/fiscal/cte' },
+  { label: 'Novo CT-e' }
+]
+
+function buildPayload(data: Schema) {
+  const payload = { ...data }
+  if (nfes.value.length > 0) {
+    payload.nfes = nfes.value.filter(n => n.chave_nfe)
+  }
+  return payload
 }
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    const payload = { ...event.data }
-    if (nfes.value.length > 0) {
-      payload.nfes = nfes.value.filter(n => n.chave_nfe)
-    }
-    await post('/ctes', payload)
+    const payload = buildPayload(event.data)
+    const response = await createCte(payload)
     toast.add({ title: 'CT-e criado', color: 'success' })
-    open.value = false
-    resetForm()
-    emit('created')
+    router.push(`/fiscal/cte/${response.id}`)
   } catch (error) {
     toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao criar CT-e.', color: 'error' })
   } finally {
@@ -154,13 +150,37 @@ function handleSubmit() {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Novo CT-e"
-    description="Criar um novo conhecimento de transporte eletrônico"
-    :ui="{ content: 'w-full sm:max-w-5xl', footer: 'justify-end' }"
-  >
-    <UButton label="Novo CT-e" icon="i-lucide-plus" />
+  <UDashboardPanel id="cte-novo">
+    <template #header>
+      <UDashboardNavbar title="Novo CT-e">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+
+        <template #right>
+          <UBreadcrumb :items="breadcrumbs" />
+        </template>
+      </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <div />
+
+        <template #right>
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="outline"
+            @click="router.push('/fiscal/cte')"
+          />
+          <UButton
+            label="Criar CT-e"
+            color="primary"
+            :loading="loading"
+            @click="handleSubmit"
+          />
+        </template>
+      </UDashboardToolbar>
+    </template>
 
     <template #body>
       <UForm
@@ -170,11 +190,14 @@ function handleSubmit() {
         class="space-y-6"
         @submit="onSubmit"
       >
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-file-text text-muted" />
-            Identificação
-          </h3>
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-file-text text-muted" />
+              Dados do CT-e
+            </h3>
+          </template>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField
               label="Natureza da Operação"
@@ -199,15 +222,16 @@ function handleSubmit() {
               <UInput v-model="state.data_emissao" type="date" class="w-full" />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-users text-muted" />
+              Participantes
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-users text-muted" />
-            Participantes
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Remetente" name="remetente_id" required>
               <USelect
@@ -258,15 +282,89 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-map text-muted" />
+              Percurso
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-calculator text-muted" />
-            Valores
-          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <UFormField label="UF Início" name="uf_inicio" required>
+              <USelect
+                v-model="state.uf_inicio"
+                :items="ufOptions"
+                class="w-full"
+                placeholder="Selecione..."
+              />
+            </UFormField>
+            <UFormField label="UF Fim" name="uf_fim" required>
+              <USelect
+                v-model="state.uf_fim"
+                :items="ufOptions"
+                class="w-full"
+                placeholder="Selecione..."
+              />
+            </UFormField>
+          </div>
+        </UCard>
+
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+                <span class="i-lucide-link text-muted" />
+                Documentos
+              </h3>
+              <UButton
+                label="Adicionar NF-e"
+                icon="i-lucide-plus"
+                size="xs"
+                variant="outline"
+                @click="addNfe"
+              />
+            </div>
+          </template>
+
+          <div v-if="nfes.length === 0" class="text-sm text-muted text-center py-4">
+            Nenhuma NF-e vinculada
+          </div>
+
+          <div class="space-y-3">
+            <div v-for="(nfe, idx) in nfes" :key="idx" class="bg-muted/30 rounded-lg p-4">
+              <div class="flex items-center gap-3">
+                <UFormField :label="`NF-e ${Number(idx) + 1}`" :name="`nfes.${idx}.chave_nfe`" class="flex-1">
+                  <UInput
+                    v-model="nfe.chave_nfe"
+                    class="w-full"
+                    maxlength="44"
+                    placeholder="Chave de 44 caracteres"
+                  />
+                </UFormField>
+                <UButton
+                  icon="i-lucide-trash"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  class="mt-5"
+                  @click="removeNfe(Number(idx))"
+                />
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-calculator text-muted" />
+              Valores
+            </h3>
+          </template>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <UFormField label="Valor do Serviço (R$)" name="valor_servico">
               <UInput
@@ -302,87 +400,16 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
-
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-map text-muted" />
-            Percurso
-          </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField label="UF Início" name="uf_inicio" required>
-              <USelect
-                v-model="state.uf_inicio"
-                :items="ufOptions"
-                class="w-full"
-                placeholder="Selecione..."
-              />
-            </UFormField>
-            <UFormField label="UF Fim" name="uf_fim" required>
-              <USelect
-                v-model="state.uf_fim"
-                :items="ufOptions"
-                class="w-full"
-                placeholder="Selecione..."
-              />
-            </UFormField>
-          </div>
-        </div>
-
-        <USeparator />
-
-        <div>
-          <div class="flex items-center justify-between mb-3">
+        <UCard>
+          <template #header>
             <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-link text-muted" />
-              Notas Fiscais Vinculadas
+              <span class="i-lucide-message-square text-muted" />
+              Informações Adicionais
             </h3>
-            <UButton
-              label="Adicionar NF-e"
-              icon="i-lucide-plus"
-              size="xs"
-              variant="outline"
-              @click="addNfe"
-            />
-          </div>
+          </template>
 
-          <div v-if="nfes.length === 0" class="text-sm text-muted text-center py-4">
-            Nenhuma NF-e vinculada
-          </div>
-
-          <div class="space-y-3">
-            <div v-for="(nfe, idx) in nfes" :key="idx" class="bg-muted/30 rounded-lg p-4">
-              <div class="flex items-center gap-3">
-                <UFormField :label="`NF-e ${Number(idx) + 1}`" :name="`nfes.${idx}.chave_nfe`" class="flex-1">
-                  <UInput
-                    v-model="nfe.chave_nfe"
-                    class="w-full"
-                    maxlength="44"
-                    placeholder="Chave de 44 caracteres"
-                  />
-                </UFormField>
-                <UButton
-                  icon="i-lucide-trash"
-                  size="xs"
-                  color="error"
-                  variant="ghost"
-                  class="mt-5"
-                  @click="removeNfe(Number(idx))"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <USeparator />
-
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-message-square text-muted" />
-            Informações Adicionais
-          </h3>
           <UFormField name="informacoes_adicionais">
             <UTextarea
               v-model="state.informacoes_adicionais"
@@ -391,23 +418,8 @@ function handleSubmit() {
               :rows="3"
             />
           </UFormField>
-        </div>
+        </UCard>
       </UForm>
     </template>
-
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Criar CT-e"
-        color="primary"
-        :loading="loading"
-        @click="handleSubmit"
-      />
-    </template>
-  </UModal>
+  </UDashboardPanel>
 </template>

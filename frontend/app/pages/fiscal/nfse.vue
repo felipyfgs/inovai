@@ -152,10 +152,7 @@ async function onCancel() {
           <UDashboardSidebarCollapse />
         </template>
 
-        <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-        </template>
+        <template #right />
       </UDashboardNavbar>
 
       <UDashboardToolbar>

@@ -101,7 +101,7 @@ class NfseController extends Controller
 
         $nfse = Nfse::create($validated);
 
-        if (!empty($validated['itens'])) {
+        if (! empty($validated['itens'])) {
             foreach ($validated['itens'] as $index => $item) {
                 $nfse->itens()->create([
                     'numero_item' => $index + 1,

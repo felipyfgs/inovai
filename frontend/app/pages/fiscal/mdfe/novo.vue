@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Mdfe } from '~/types'
+import type { BreadcrumbItem, FormSubmitEvent } from '@nuxt/ui'
 
-const props = defineProps<{ mdfe: Mdfe }>()
-const emit = defineEmits<{ updated: [] }>()
+import { UButton } from '#components'
 
 const ufOptions = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -34,35 +32,34 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
-const open = ref(false)
-const loading = ref(false)
+const router = useRouter()
 const toast = useToast()
-const { put } = useApiMutation()
-const { extractMessage } = useApiError()
+const loading = ref(false)
 const formRef = useTemplateRef('formRef')
+const { createMdfe, extractMessage } = useMdfe()
 
-const state = reactive<Partial<Schema>>({})
+const today = new Date().toISOString().split('T')[0]!
 
-watch(open, (val) => {
-  if (val) {
-    Object.assign(state, {
-      modal: props.mdfe.modal,
-      data_emissao: props.mdfe.data_emissao?.split('T')[0] || '',
-      uf_carregamento: props.mdfe.uf_carregamento,
-      uf_descarregamento: props.mdfe.uf_descarregamento,
-      veiculo_placa: props.mdfe.veiculo_placa || '',
-      motorista_cpf: props.mdfe.motorista_cpf || '',
-      motorista_nome: props.mdfe.motorista_nome || '',
-      uf_percurso: props.mdfe.uf_percurso ? [...props.mdfe.uf_percurso] : [],
-      valor_carga: props.mdfe.valor_carga,
-      peso_bruto: props.mdfe.peso_bruto,
-      documentos: props.mdfe.documentos?.length
-        ? props.mdfe.documentos.map(d => ({ tipo: d.tipo, chave: d.chave }))
-        : [{ tipo: 'nfe' as const, chave: '' }],
-      informacoes_adicionais: props.mdfe.informacoes_adicionais || ''
-    })
-  }
+const state = reactive<Partial<Schema>>({
+  modal: 1,
+  data_emissao: today,
+  uf_carregamento: '',
+  uf_descarregamento: '',
+  veiculo_placa: '',
+  motorista_cpf: '',
+  motorista_nome: '',
+  uf_percurso: [],
+  valor_carga: 0,
+  peso_bruto: 0,
+  documentos: [{ tipo: 'nfe', chave: '' }],
+  informacoes_adicionais: ''
 })
+
+const breadcrumbs: BreadcrumbItem[] = [
+  { label: 'Fiscal', icon: 'i-lucide-file-text', to: '/fiscal/mdfe' },
+  { label: 'MDF-e', icon: 'i-lucide-truck', to: '/fiscal/mdfe' },
+  { label: 'Novo MDF-e' }
+]
 
 function addDocumento() {
   state.documentos!.push({ tipo: 'nfe', chave: '' })
@@ -85,12 +82,11 @@ function removeUfPercurso(index: number) {
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    await put(`/mdfes/${props.mdfe.id}`, event.data)
-    toast.add({ title: 'MDF-e atualizado', description: `MDF-e atualizado com sucesso`, color: 'success' })
-    open.value = false
-    emit('updated')
+    const response = await createMdfe(event.data)
+    toast.add({ title: 'MDF-e criado', description: 'MDF-e criado com sucesso', color: 'success' })
+    router.push(`/fiscal/mdfe/${response.id}`)
   } catch (error) {
-    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao atualizar MDF-e.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao criar MDF-e.', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -102,13 +98,37 @@ function handleSubmit() {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Editar MDF-e"
-    description="Alterar dados do MDF-e"
-    :ui="{ content: 'w-full sm:max-w-5xl', footer: 'justify-end' }"
-  >
-    <slot />
+  <UDashboardPanel id="mdfe-novo">
+    <template #header>
+      <UDashboardNavbar title="Novo MDF-e">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+
+        <template #right>
+          <UBreadcrumb :items="breadcrumbs" />
+        </template>
+      </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <div />
+
+        <template #right>
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="outline"
+            @click="router.push('/fiscal/mdfe')"
+          />
+          <UButton
+            label="Criar MDF-e"
+            color="primary"
+            :loading="loading"
+            @click="handleSubmit"
+          />
+        </template>
+      </UDashboardToolbar>
+    </template>
 
     <template #body>
       <UForm
@@ -118,11 +138,14 @@ function handleSubmit() {
         class="space-y-6"
         @submit="onSubmit"
       >
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-file-text text-muted" />
-            Identificação
-          </h3>
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-file-text text-muted" />
+              Dados do MDF-e
+            </h3>
+          </template>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Modal" name="modal">
               <USelect
@@ -152,42 +175,50 @@ function handleSubmit() {
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-truck text-muted" />
+              Veículo e Motorista
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-truck text-muted" />
-            Veículo e Motorista
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Placa do Veículo" name="veiculo_placa">
               <UInput
                 v-model="state.veiculo_placa"
                 class="w-full"
                 maxlength="8"
+                placeholder="ABC1D23"
               />
             </UFormField>
             <UFormField label="CPF do Motorista" name="motorista_cpf">
               <UInput
                 v-model="state.motorista_cpf"
                 class="w-full"
+                placeholder="000.000.000-00"
               />
             </UFormField>
             <UFormField label="Nome do Motorista" name="motorista_nome" class="sm:col-span-2">
-              <UInput v-model="state.motorista_nome" class="w-full" />
+              <UInput
+                v-model="state.motorista_nome"
+                class="w-full"
+                placeholder="Nome completo"
+              />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-route text-muted" />
+              Percurso
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-route text-muted" />
-            Percurso
-          </h3>
           <div class="space-y-2">
             <div
               v-for="(uf, index) in state.uf_percurso"
@@ -218,15 +249,16 @@ function handleSubmit() {
               @click="addUfPercurso"
             />
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-package text-muted" />
+              Valores
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-package text-muted" />
-            Carga
-          </h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Valor da Carga (R$)" name="valor_carga">
               <UInput
@@ -234,6 +266,7 @@ function handleSubmit() {
                 type="number"
                 step="0.01"
                 class="w-full"
+                placeholder="0,00"
               />
             </UFormField>
             <UFormField label="Peso Bruto (kg)" name="peso_bruto">
@@ -242,18 +275,29 @@ function handleSubmit() {
                 type="number"
                 step="0.01"
                 class="w-full"
+                placeholder="0,00"
               />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+                <span class="i-lucide-paperclip text-muted" />
+                Documentos Vinculados
+              </h3>
+              <UButton
+                label="Adicionar Documento"
+                icon="i-lucide-plus"
+                size="xs"
+                variant="outline"
+                @click="addDocumento"
+              />
+            </div>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-paperclip text-muted" />
-            Documentos Vinculados
-          </h3>
           <div class="space-y-3">
             <div
               v-for="(doc, index) in state.documentos"
@@ -288,48 +332,27 @@ function handleSubmit() {
                 @click="removeDocumento(index)"
               />
             </div>
-            <UButton
-              label="Adicionar Documento"
-              icon="i-lucide-plus"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              @click="addDocumento"
-            />
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-message-square text-muted" />
+              Informações Adicionais
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-message-square text-muted" />
-            Informações Adicionais
-          </h3>
           <UFormField name="informacoes_adicionais">
             <UTextarea
               v-model="state.informacoes_adicionais"
               class="w-full"
+              placeholder="Informações adicionais..."
               :rows="3"
             />
           </UFormField>
-        </div>
+        </UCard>
       </UForm>
     </template>
-
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Salvar Alterações"
-        color="primary"
-        :loading="loading"
-        @click="handleSubmit"
-      />
-    </template>
-  </UModal>
+  </UDashboardPanel>
 </template>

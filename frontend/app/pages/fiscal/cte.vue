@@ -8,6 +8,7 @@ import { formatCurrency } from '~/utils'
 
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
+const router = useRouter()
 const toast = useToast()
 const table = useTemplateRef('table')
 const { listCtes, signCte, transmitCte, extractMessage } = useCte()
@@ -20,7 +21,6 @@ const { data, status, refresh } = listCtes()
 
 const ctes = computed(() => data.value?.data || [])
 
-const editModal = useTemplateRef('editModal')
 const deleteModal = useTemplateRef('deleteModal')
 const cancelModal = useTemplateRef('cancelModal')
 
@@ -41,6 +41,13 @@ function getRowItems(row: Row<Cte>) {
       label: 'Ações'
     },
     {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/fiscal/cte/${row.original.id}`)
+      }
+    },
+    {
       label: 'Copiar chave',
       icon: 'i-lucide-copy',
       onSelect() {
@@ -57,8 +64,7 @@ function getRowItems(row: Row<Cte>) {
       label: 'Editar',
       icon: 'i-lucide-pencil',
       onSelect() {
-        selectedCte.value = row.original
-        editModal.value?.openModal()
+        router.push(`/fiscal/cte/${row.original.id}`)
       }
     },
     {
@@ -219,15 +225,6 @@ watch(() => statusFilter.value, (newVal) => {
 
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
 
-function onCreated() {
-  refresh()
-}
-
-function onUpdated() {
-  refresh()
-  selectedCte.value = null
-}
-
 function onDeleted() {
   refresh()
   selectedCte.value = null
@@ -248,9 +245,12 @@ function onCancelled() {
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <CtesAddModal @created="onCreated" />
+          <UButton
+            label="Novo CT-e"
+            icon="i-lucide-plus"
+            color="primary"
+            @click="router.push('/fiscal/cte/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -339,12 +339,6 @@ function onCancelled() {
         </div>
       </div>
 
-      <CtesEditModal
-        v-if="selectedCte"
-        ref="editModal"
-        :cte="selectedCte"
-        @updated="onUpdated"
-      />
       <CtesDeleteModal
         v-if="selectedCte"
         ref="deleteModal"

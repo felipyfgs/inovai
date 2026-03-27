@@ -157,8 +157,6 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
           <TransportadorasAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

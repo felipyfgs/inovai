@@ -308,7 +308,6 @@ const tabItems = computed<NavigationMenuItem[][]>(() => [[
             :square="true"
             @click="router.push('/admin/escritorios')"
           />
-          <CompanySelector />
         </template>
       </UDashboardNavbar>
 

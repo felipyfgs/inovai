@@ -91,10 +91,7 @@ const addressParts = computed(() => {
           <UDashboardSidebarCollapse />
         </template>
 
-        <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-        </template>
+        <template #right />
       </UDashboardNavbar>
     </template>
 

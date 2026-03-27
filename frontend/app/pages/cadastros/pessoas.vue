@@ -7,6 +7,7 @@ import type { Pessoa, PaginatedResponse } from '~/types'
 
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
+const router = useRouter()
 const toast = useToast()
 const table = useTemplateRef('table')
 const { currentCompany } = useCurrentCompany()
@@ -25,7 +26,6 @@ const { data, status, refresh } = useApi<PaginatedResponse<Pessoa>>('/pessoas', 
 
 const pessoas = computed(() => data.value?.data || [])
 
-const editingPessoa = ref<Pessoa | null>(null)
 const deletingPessoa = ref<Pessoa | null>(null)
 
 function getRowItems(row: Row<Pessoa>) {
@@ -46,13 +46,20 @@ function getRowItems(row: Row<Pessoa>) {
       }
     },
     {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/cadastros/pessoas/${row.original.id}`)
+      }
+    },
+    {
       type: 'separator' as const
     },
     {
       label: 'Editar pessoa',
       icon: 'i-lucide-pencil',
       onSelect() {
-        editingPessoa.value = row.original
+        router.push(`/cadastros/pessoas/${row.original.id}`)
       }
     },
     {
@@ -213,9 +220,12 @@ const pagination = ref({
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <PessoasAddModal @created="refresh()" />
+          <UButton
+            label="Nova Pessoa"
+            icon="i-lucide-plus"
+            color="primary"
+            @click="router.push('/cadastros/pessoas/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -311,11 +321,6 @@ const pagination = ref({
       </div>
     </template>
 
-    <PessoasEditModal
-      v-if="editingPessoa"
-      :pessoa="editingPessoa"
-      @updated="() => { editingPessoa = null; refresh() }"
-    />
     <PessoasDeleteModal
       v-if="deletingPessoa"
       :pessoa="deletingPessoa"

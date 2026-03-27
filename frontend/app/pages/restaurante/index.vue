@@ -65,10 +65,7 @@ const mesaStatusLabels: Record<string, string> = {
           <UDashboardSidebarCollapse />
         </template>
 
-        <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-        </template>
+        <template #right />
       </UDashboardNavbar>
 
       <UDashboardToolbar>

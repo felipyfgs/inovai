@@ -158,8 +158,6 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
           <NotasFiscaisNfceAddModal @created="refresh" />
         </template>
       </UDashboardNavbar>

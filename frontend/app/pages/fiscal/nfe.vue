@@ -8,6 +8,7 @@ import { formatCurrency } from '~/utils'
 
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
+const router = useRouter()
 const toast = useToast()
 const table = useTemplateRef('table')
 const { listNfes } = useNfe()
@@ -40,6 +41,13 @@ function getRowItems(row: Row<Nfe>) {
     {
       type: 'label' as const,
       label: 'Ações'
+    },
+    {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/fiscal/nfe/${row.original.id}`)
+      }
     },
     {
       label: 'Copiar chave',
@@ -182,9 +190,12 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <NotasFiscaisAddModal @created="refresh" />
+          <UButton
+            label="Nova NF-e"
+            icon="i-lucide-plus"
+            color="primary"
+            @click="router.push('/fiscal/nfe/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>

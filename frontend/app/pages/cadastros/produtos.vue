@@ -198,8 +198,6 @@ const pagination = ref({
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
           <ProdutosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>

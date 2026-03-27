@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Nfe, NfeItem, Pessoa, Produto, Transportadora, PaginatedResponse } from '~/types'
+import type { BreadcrumbItem, FormSubmitEvent } from '@nuxt/ui'
+import type { Pessoa, Produto, Transportadora, PaginatedResponse } from '~/types'
 import { formatCurrency } from '~/utils'
 
-const props = defineProps<{ nota: Nfe }>()
-const emit = defineEmits<{ updated: [] }>()
+import { UButton } from '#components'
+
+import * as z from 'zod'
 
 const cstIcmsOptions = [
   { label: '00 - Tributada integralmente', value: '00' },
@@ -58,6 +58,8 @@ const schema = z.object({
   tipo_operacao: z.coerce.number().min(1).max(2),
   finalidade: z.coerce.number().min(1).max(4),
   pessoa_id: z.coerce.number().nullable().optional(),
+  data_emissao: z.string().optional(),
+  data_saida: z.string().optional(),
   transportadora_id: z.coerce.number().nullable().optional(),
   frete_por: z.coerce.number().optional(),
   valor_frete: z.coerce.number().min(0).default(0),
@@ -89,6 +91,8 @@ interface NotaState {
   tipo_operacao: number
   finalidade: number
   pessoa_id: number | null
+  data_emissao: string
+  data_saida: string
   transportadora_id: number | null
   frete_por: number
   valor_frete: number
@@ -98,13 +102,14 @@ interface NotaState {
   itens: NotaItem[]
 }
 
-const open = ref(false)
-const loading = ref(false)
+const router = useRouter()
 const toast = useToast()
-const { put } = useApiMutation()
+const { createNfe } = useNfe()
 const { currentCompany } = useCurrentCompany()
 const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
+
+const loading = ref(false)
 
 const pessoaSearch = ref('')
 const transportadoraSearch = ref('')
@@ -159,10 +164,12 @@ function createEmptyItem(): NotaItem {
 }
 
 const state = reactive<NotaState>({
-  natureza_operacao: '',
+  natureza_operacao: 'Venda de mercadoria',
   tipo_operacao: 2,
   finalidade: 1,
   pessoa_id: null,
+  data_emissao: new Date().toISOString().split('T')[0],
+  data_saida: '',
   transportadora_id: null,
   frete_por: 9,
   valor_frete: 0,
@@ -170,42 +177,6 @@ const state = reactive<NotaState>({
   valor_desconto: 0,
   informacoes_adicionais: '',
   itens: [createEmptyItem()]
-})
-
-watch(open, (val) => {
-  if (val) {
-    const nota = props.nota as unknown as Record<string, unknown>
-    state.natureza_operacao = (nota.natureza_operacao as string) || ''
-    state.tipo_operacao = (nota.tipo_operacao as number) || 2
-    state.finalidade = (nota.finalidade as number) || 1
-    state.pessoa_id = (nota.pessoa_id as number) || null
-    state.transportadora_id = (nota.transportadora_id as number) || null
-    state.frete_por = (nota.frete_por as number) ?? 9
-    state.valor_frete = (nota.valor_frete as number) || 0
-    state.valor_seguro = (nota.valor_seguro as number) || 0
-    state.valor_desconto = (nota.valor_desconto as number) || 0
-    state.informacoes_adicionais = (nota.informacoes_adicionais as string) || ''
-    state.itens = ((nota.itens as NfeItem[]) || []).map(i => ({
-      produto_id: i.produto_id || null,
-      descricao: i.descricao || '',
-      ncm: i.ncm || '',
-      cfop: i.cfop || '',
-      unidade: i.unidade || '',
-      quantidade: i.quantidade || 1,
-      valor_unitario: i.valor_unitario || 0,
-      cst_icms: i.cst_icms || '00',
-      origem: i.origem || 0,
-      bc_icms: i.bc_icms || 0,
-      aliq_icms: i.aliq_icms || 0,
-      valor_icms: i.valor_icms || 0
-    }))
-    if (state.itens.length === 0) {
-      state.itens = [createEmptyItem()]
-    }
-    pessoaSearch.value = ''
-    transportadoraSearch.value = ''
-    produtoSearch.value = ''
-  }
 })
 
 function addItem() {
@@ -277,15 +248,20 @@ function buildPayload(event: FormSubmitEvent<Schema>) {
   return data
 }
 
+const breadcrumbs: BreadcrumbItem[] = [
+  { label: 'Fiscal', icon: 'i-lucide-file-text', to: '/fiscal/nfe' },
+  { label: 'NF-e', icon: 'i-lucide-file-text', to: '/fiscal/nfe' },
+  { label: 'Nova NF-e' }
+]
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    await put(`/nfes/${props.nota.id}`, buildPayload(event))
-    toast.add({ title: 'NF-e atualizada', color: 'success' })
-    open.value = false
-    emit('updated')
+    const response = await createNfe(buildPayload(event))
+    toast.add({ title: 'NF-e criada', color: 'success' })
+    router.push(`/fiscal/nfe/${response.id}`)
   } catch (error) {
-    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao atualizar NF-e.', color: 'error' })
+    toast.add({ title: 'Erro', description: extractMessage(error) || 'Erro ao criar NF-e.', color: 'error' })
   } finally {
     loading.value = false
   }
@@ -297,13 +273,37 @@ function handleSubmit() {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    title="Editar NF-e"
-    description="Alterar dados da Nota Fiscal Eletrônica"
-    :ui="{ content: 'w-full sm:max-w-5xl', footer: 'justify-end' }"
-  >
-    <slot />
+  <UDashboardPanel id="nfe-novo">
+    <template #header>
+      <UDashboardNavbar title="Nova NF-e">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+
+        <template #right>
+          <UBreadcrumb :items="breadcrumbs" />
+        </template>
+      </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <div />
+
+        <template #right>
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="outline"
+            @click="router.push('/fiscal/nfe')"
+          />
+          <UButton
+            label="Criar NF-e"
+            color="primary"
+            :loading="loading"
+            @click="handleSubmit"
+          />
+        </template>
+      </UDashboardToolbar>
+    </template>
 
     <template #body>
       <UForm
@@ -313,11 +313,14 @@ function handleSubmit() {
         class="space-y-6"
         @submit="onSubmit"
       >
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-file-text text-muted" />
-            Identificação
-          </h3>
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-file-text text-muted" />
+              Dados da Nota
+            </h3>
+          </template>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <UFormField label="Natureza da Operação" name="natureza_operacao" required>
               <UInput v-model="state.natureza_operacao" class="w-full" placeholder="Ex: Venda de mercadoria" />
@@ -344,18 +347,6 @@ function handleSubmit() {
                 class="w-full"
               />
             </UFormField>
-            <UFormField label="Forma de Frete" name="frete_por">
-              <USelect
-                v-model="state.frete_por"
-                :items="[
-                  { label: '0 - Remetente', value: 0 },
-                  { label: '1 - Destinatário', value: 1 },
-                  { label: '2 - Terceiros', value: 2 },
-                  { label: '9 - Sem frete', value: 9 }
-                ]"
-                class="w-full"
-              />
-            </UFormField>
             <UFormField label="Destinatário" name="pessoa_id">
               <USelect
                 v-model="state.pessoa_id"
@@ -365,34 +356,31 @@ function handleSubmit() {
                 @update:model-value="() => {}"
               />
             </UFormField>
-            <UFormField label="Transportadora" name="transportadora_id">
-              <USelect
-                v-model="state.transportadora_id"
-                :items="[{ label: '(Nenhuma)', value: null }, ...transportadoraOptions]"
-                class="w-full"
-                placeholder="Buscar por nome ou CNPJ..."
-                @update:model-value="() => {}"
-              />
+            <UFormField label="Data de Emissão" name="data_emissao">
+              <UInput v-model="state.data_emissao" type="date" class="w-full" />
+            </UFormField>
+            <UFormField label="Data de Saída/Entrada" name="data_saida">
+              <UInput v-model="state.data_saida" type="date" class="w-full" />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
-
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-list text-muted" />
-              Itens da Nota
-            </h3>
-            <UButton
-              label="Adicionar Item"
-              icon="i-lucide-plus"
-              size="xs"
-              variant="outline"
-              @click="addItem"
-            />
-          </div>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+                <span class="i-lucide-list text-muted" />
+                Itens da Nota
+              </h3>
+              <UButton
+                label="Adicionar Item"
+                icon="i-lucide-plus"
+                size="xs"
+                variant="outline"
+                @click="addItem"
+              />
+            </div>
+          </template>
 
           <div class="space-y-3">
             <div v-for="(item, idx) in state.itens" :key="idx" class="bg-muted/30 rounded-lg p-4 space-y-3">
@@ -490,15 +478,16 @@ function handleSubmit() {
               </div>
             </div>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-calculator text-muted" />
+              Totais
+            </h3>
+          </template>
 
-        <div>
-          <h3 class="text-sm font-semibold text-highlighted mb-3 flex items-center gap-2">
-            <span class="i-lucide-calculator text-muted" />
-            Totais
-          </h3>
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <UFormField label="Valor Produtos">
               <UInput :model-value="formatCurrency(valorProdutos)" class="w-full" disabled />
@@ -531,34 +520,59 @@ function handleSubmit() {
               <UInput :model-value="formatCurrency(valorTotal)" class="w-full" disabled />
             </UFormField>
           </div>
-        </div>
+        </UCard>
 
-        <USeparator />
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-calculator text-muted" />
+              Transporte
+            </h3>
+          </template>
 
-        <UFormField label="Informações Adicionais" name="informacoes_adicionais">
-          <UTextarea
-            v-model="state.informacoes_adicionais"
-            class="w-full"
-            placeholder="Informações complementares da nota fiscal..."
-            :rows="3"
-          />
-        </UFormField>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <UFormField label="Forma de Frete" name="frete_por">
+              <USelect
+                v-model="state.frete_por"
+                :items="[
+                  { label: '0 - Remetente', value: 0 },
+                  { label: '1 - Destinatário', value: 1 },
+                  { label: '2 - Terceiros', value: 2 },
+                  { label: '9 - Sem frete', value: 9 }
+                ]"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Transportadora" name="transportadora_id">
+              <USelect
+                v-model="state.transportadora_id"
+                :items="[{ label: '(Nenhuma)', value: null }, ...transportadoraOptions]"
+                class="w-full"
+                placeholder="Buscar por nome ou CNPJ..."
+                @update:model-value="() => {}"
+              />
+            </UFormField>
+          </div>
+        </UCard>
+
+        <UCard>
+          <template #header>
+            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
+              <span class="i-lucide-message-square text-muted" />
+              Informações Adicionais
+            </h3>
+          </template>
+
+          <UFormField label="Informações Adicionais" name="informacoes_adicionais">
+            <UTextarea
+              v-model="state.informacoes_adicionais"
+              class="w-full"
+              placeholder="Informações complementares da nota fiscal..."
+              :rows="3"
+            />
+          </UFormField>
+        </UCard>
       </UForm>
     </template>
-
-    <template #footer="{ close }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="close"
-      />
-      <UButton
-        label="Salvar Alterações"
-        color="primary"
-        :loading="loading"
-        @click="handleSubmit"
-      />
-    </template>
-  </UModal>
+  </UDashboardPanel>
 </template>

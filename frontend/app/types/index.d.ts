@@ -217,6 +217,34 @@ export interface Company {
   csc_id: string | null
   csc_token: string | null
   is_active: boolean
+  office_plan_id?: number | null
+  modules?: CompanyModule[]
+}
+
+export interface CompanyModule {
+  id: number
+  company_id: number
+  module: string
+  is_active: boolean
+}
+
+export interface OfficePlan {
+  id: number
+  office_id: number
+  name: string
+  description: string | null
+  price: number
+  max_nfs_month: number | null
+  modules: string[]
+  is_active: boolean
+  is_default: boolean
+}
+
+export interface AvailableModule {
+  id: string
+  label: string
+  is_active: boolean
+  allowed_by_plan: boolean
 }
 
 export interface EmitenteCertificado {
@@ -525,6 +553,17 @@ export interface Transportadora {
   is_active: boolean
 }
 
+export interface OrcamentoItem {
+  id?: number
+  produto_id: number | null
+  descricao: string
+  quantidade: number
+  valor_unitario: number
+  desconto: number
+  valor_total?: number
+  produto?: Produto
+}
+
 export interface Orcamento {
   id: number
   company_id: number
@@ -537,6 +576,20 @@ export interface Orcamento {
   desconto: number
   valor_total: number
   pessoa?: Pessoa
+  itens?: OrcamentoItem[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PedidoItem {
+  id?: number
+  produto_id: number | null
+  descricao: string
+  quantidade: number
+  valor_unitario: number
+  desconto: number
+  valor_total?: number
+  produto?: Produto
 }
 
 export interface Pedido {
@@ -551,6 +604,10 @@ export interface Pedido {
   desconto: number
   valor_total: number
   pessoa?: Pessoa
+  orcamento?: Orcamento
+  itens?: PedidoItem[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface Nfe {

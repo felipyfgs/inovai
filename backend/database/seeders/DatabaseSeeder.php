@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Office;
+use App\Models\OfficePlan;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
@@ -15,12 +16,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create roles
         $adminRole = Role::create(['name' => 'admin']);
         $officeUserRole = Role::create(['name' => 'office_user']);
         $companyUserRole = Role::create(['name' => 'company_user']);
 
-        // Create permissions
         $permissions = [
             'manage_offices',
             'manage_plans',
@@ -62,14 +61,13 @@ class DatabaseSeeder extends Seeder
             'view_reports',
         ]);
 
-        // Create plans
         Plan::create([
             'name' => 'Gratuito',
             'description' => 'Plano gratuito para testes',
             'price' => 0,
             'max_companies' => 1,
             'max_nfs_month' => 10,
-            'features' => ['nfe', 'nfce'],
+            'features' => ['nfe', 'nfce', 'orcamento'],
             'is_active' => true,
         ]);
 
@@ -79,7 +77,7 @@ class DatabaseSeeder extends Seeder
             'price' => 99.90,
             'max_companies' => 5,
             'max_nfs_month' => 100,
-            'features' => ['nfe', 'nfce', 'orcamento', 'estoque'],
+            'features' => ['nfe', 'nfce', 'nfse', 'orcamento', 'estoque', 'financeiro'],
             'is_active' => true,
         ]);
 
@@ -89,7 +87,7 @@ class DatabaseSeeder extends Seeder
             'price' => 199.90,
             'max_companies' => 20,
             'max_nfs_month' => 500,
-            'features' => ['nfe', 'nfce', 'cte', 'mdfe', 'orcamento', 'estoque', 'relatorios'],
+            'features' => ['nfe', 'nfce', 'nfse', 'cte', 'mdfe', 'orcamento', 'estoque', 'financeiro', 'restaurante', 'relatorios'],
             'is_active' => true,
         ]);
 
@@ -99,11 +97,10 @@ class DatabaseSeeder extends Seeder
             'price' => 499.90,
             'max_companies' => 100,
             'max_nfs_month' => 5000,
-            'features' => ['nfe', 'nfce', 'cte', 'mdfe', 'orcamento', 'estoque', 'relatorios', 'api', 'suporte_prioritario'],
+            'features' => ['nfe', 'nfce', 'nfse', 'cte', 'mdfe', 'orcamento', 'estoque', 'financeiro', 'restaurante', 'relatorios'],
             'is_active' => true,
         ]);
 
-        // Create admin office and user
         $adminOffice = Office::create([
             'name' => 'InovAI Admin',
             'email' => 'admin@inovai.com.br',
@@ -118,7 +115,6 @@ class DatabaseSeeder extends Seeder
         ]);
         $admin->assignRole('admin');
 
-        // Create demo office and user
         $demoOffice = Office::create([
             'name' => 'Escritório Demo',
             'cnpj' => '12.345.678/0001-00',
@@ -134,7 +130,6 @@ class DatabaseSeeder extends Seeder
         ]);
         $officeUser->assignRole('office_user');
 
-        // Create demo subscription
         Subscription::create([
             'office_id' => $demoOffice->id,
             'plan_id' => Plan::where('name', 'Profissional')->first()->id,
@@ -142,5 +137,56 @@ class DatabaseSeeder extends Seeder
             'starts_at' => now(),
             'ends_at' => now()->addYear(),
         ]);
+
+        $defaultPlans = [
+            [
+                'name' => 'Básico',
+                'description' => 'Ideal para pequenas empresas',
+                'price' => 150.00,
+                'max_nfs_month' => 100,
+                'modules' => ['nfe', 'nfce', 'orcamento', 'estoque'],
+                'is_default' => true,
+            ],
+            [
+                'name' => 'Serviços',
+                'description' => 'Para empresas prestadoras de serviços',
+                'price' => 200.00,
+                'max_nfs_month' => 200,
+                'modules' => ['nfse', 'orcamento', 'financeiro'],
+            ],
+            [
+                'name' => 'Comércio',
+                'description' => 'Para empresas do setor de comércio',
+                'price' => 250.00,
+                'max_nfs_month' => 500,
+                'modules' => ['nfe', 'nfce', 'orcamento', 'estoque', 'financeiro'],
+            ],
+            [
+                'name' => 'Transportadora',
+                'description' => 'Para empresas de transporte de cargas',
+                'price' => 350.00,
+                'max_nfs_month' => 1000,
+                'modules' => ['cte', 'mdfe', 'nfe', 'orcamento'],
+            ],
+            [
+                'name' => 'Completo',
+                'description' => 'Todos os módulos disponíveis',
+                'price' => 500.00,
+                'max_nfs_month' => null,
+                'modules' => ['nfe', 'nfce', 'nfse', 'cte', 'mdfe', 'orcamento', 'estoque', 'financeiro', 'restaurante', 'relatorios'],
+            ],
+        ];
+
+        foreach ($defaultPlans as $plan) {
+            OfficePlan::create([
+                'office_id' => $demoOffice->id,
+                'name' => $plan['name'],
+                'description' => $plan['description'],
+                'price' => $plan['price'],
+                'max_nfs_month' => $plan['max_nfs_month'],
+                'modules' => $plan['modules'],
+                'is_default' => $plan['is_default'] ?? false,
+            ]);
+        }
     }
 }

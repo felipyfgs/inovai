@@ -26,21 +26,23 @@ class ResolveTenant
         }
 
         if ($companyId) {
-            $cacheKey = "tenant:{$user->id}:{$companyId}";
+            Cache::forget("tenant:{$user->id}:{$companyId}");
 
-            $company = Cache::remember($cacheKey, 300, function () use ($user, $companyId) {
-                if ($user->hasRole('admin')) {
-                    return Company::find($companyId);
-                }
+            $company = null;
 
-                if ($user->hasAnyRole(['office_user', 'accountant'])) {
-                    return Company::where('id', $companyId)
-                        ->where('office_id', $user->office_id)
-                        ->first();
-                }
+            if ($user->hasRole('admin')) {
+                $company = Company::find($companyId);
+            } elseif ($user->hasAnyRole(['office_user', 'accountant'])) {
+                $company = Company::where('id', $companyId)
+                    ->where('office_id', $user->office_id)
+                    ->first();
+            } else {
+                $company = $user->companies()->where('companies.id', $companyId)->first();
+            }
 
-                return $user->companies()->where('companies.id', $companyId)->first();
-            });
+            if ($company) {
+                Cache::put("tenant:{$user->id}:{$companyId}", $company, 300);
+            }
 
             if (! $company) {
                 return response()->json(['message' => 'Sem permissão para acessar esta empresa.'], 403);

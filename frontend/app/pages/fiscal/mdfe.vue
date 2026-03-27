@@ -8,6 +8,7 @@ import { formatCurrency } from '~/utils'
 
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
+const router = useRouter()
 const toast = useToast()
 const table = useTemplateRef('table')
 const { signMdfe, transmitMdfe, extractMessage } = useMdfe()
@@ -16,8 +17,6 @@ const columnFilters = ref([])
 const columnVisibility = ref()
 const rowSelection = ref({})
 
-const addModal = useTemplateRef('addModal')
-const editModal = useTemplateRef('editModal')
 const deleteModal = useTemplateRef('deleteModal')
 const cancelModal = useTemplateRef('cancelModal')
 const encerrarModal = useTemplateRef('encerrarModal')
@@ -34,6 +33,13 @@ function getRowItems(row: Row<Mdfe>) {
     {
       type: 'label' as const,
       label: 'Ações'
+    },
+    {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/fiscal/mdfe/${mdfe.id}`)
+      }
     },
     {
       label: 'Copiar chave',
@@ -217,14 +223,6 @@ watch(() => statusFilter.value, (newVal) => {
 
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
 
-function onCreated() {
-  refresh()
-}
-
-function onUpdated() {
-  refresh()
-}
-
 function onDeleted() {
   refresh()
 }
@@ -247,9 +245,12 @@ function onEncerrado() {
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <MdfeAddModal ref="addModal" @created="onCreated" />
+          <UButton
+            label="Novo MDF-e"
+            icon="i-lucide-plus"
+            color="primary"
+            @click="router.push('/fiscal/mdfe/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -339,12 +340,6 @@ function onEncerrado() {
         </div>
       </div>
 
-      <MdfeEditModal
-        v-if="selectedMdfe"
-        ref="editModal"
-        :mdfe="selectedMdfe"
-        @updated="onUpdated"
-      />
       <MdfeDeleteModal
         v-if="selectedMdfe"
         ref="deleteModal"

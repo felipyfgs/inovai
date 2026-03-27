@@ -8,6 +8,7 @@ import type { Company, PaginatedResponse } from '~/types'
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
 const toast = useToast()
+const router = useRouter()
 const table = useTemplateRef('table')
 const { setCompany } = useCurrentCompany()
 
@@ -24,8 +25,8 @@ const { data, status, refresh } = useApi<PaginatedResponse<Company>>('/companies
 
 const companies = computed(() => data.value?.data || [])
 
-const editingCompany = ref<Company | null>(null)
 const deletingCompany = ref<Company | null>(null)
+const modulesCompany = ref<Company | null>(null)
 
 function getRowItems(row: Row<Company>) {
   return [
@@ -34,18 +35,27 @@ function getRowItems(row: Row<Company>) {
       label: 'Ações'
     },
     {
-      label: 'Selecionar empresa',
-      icon: 'i-lucide-check-circle',
-      onSelect() {
+      label: 'Acessar como empresa',
+      icon: 'i-lucide-log-in',
+      onSelect: async () => {
         setCompany(row.original)
         toast.add({
-          title: 'Empresa selecionada',
+          title: 'Acessando como empresa',
           description: row.original.fantasia || row.original.razao_social
         })
+        await clearNuxtData()
+        await navigateTo('/')
       }
     },
     {
       type: 'separator' as const
+    },
+    {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/empresas/${row.original.id}`)
+      }
     },
     {
       label: 'Copiar CNPJ',
@@ -59,10 +69,10 @@ function getRowItems(row: Row<Company>) {
       }
     },
     {
-      label: 'Editar empresa',
-      icon: 'i-lucide-pencil',
+      label: 'Gerenciar Módulos',
+      icon: 'i-lucide-puzzle',
       onSelect() {
-        editingCompany.value = row.original
+        modulesCompany.value = row.original
       }
     },
     {
@@ -207,9 +217,7 @@ const pagination = ref({
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <EmpresasAddModal @created="refresh()" />
+          <UButton label="Nova Empresa" icon="i-lucide-plus" @click="router.push('/empresas/novo')" />
         </template>
       </UDashboardNavbar>
     </template>
@@ -305,14 +313,14 @@ const pagination = ref({
     </template>
   </UDashboardPanel>
 
-  <EmpresasEditModal
-    v-if="editingCompany"
-    :company="editingCompany"
-    @updated="() => { editingCompany = null; refresh() }"
-  />
   <EmpresasDeleteModal
     v-if="deletingCompany"
     :company="deletingCompany"
     @deleted="() => { deletingCompany = null; refresh() }"
+  />
+  <EmpresasModulesModal
+    v-if="modulesCompany"
+    :company="modulesCompany"
+    @updated="() => { modulesCompany = null; refresh() }"
   />
 </template>

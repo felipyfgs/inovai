@@ -9,6 +9,7 @@ import { formatCurrency } from '~/utils'
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
 const toast = useToast()
+const router = useRouter()
 const table = useTemplateRef('table')
 const { currentCompany } = useCurrentCompany()
 
@@ -30,6 +31,16 @@ function getRowItems(row: Row<Pedido>) {
     {
       type: 'label' as const,
       label: 'Ações'
+    },
+    {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/comercial/pedidos/${row.original.id}`)
+      }
+    },
+    {
+      type: 'separator' as const
     },
     {
       label: 'Gerar NF-e',
@@ -163,9 +174,11 @@ const pagination = ref({
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <PedidosAddModal @created="refresh()" />
+          <UButton
+            label="Novo Pedido"
+            icon="i-lucide-plus"
+            @click="router.push('/comercial/pedidos/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>

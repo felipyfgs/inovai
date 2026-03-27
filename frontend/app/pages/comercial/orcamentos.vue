@@ -9,6 +9,7 @@ import { formatCurrency } from '~/utils'
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
 const toast = useToast()
+const router = useRouter()
 const table = useTemplateRef('table')
 const { currentCompany } = useCurrentCompany()
 
@@ -42,6 +43,16 @@ function getRowItems(row: Row<Orcamento>) {
     {
       type: 'label' as const,
       label: 'Ações'
+    },
+    {
+      label: 'Ver',
+      icon: 'i-lucide-eye',
+      onSelect() {
+        router.push(`/comercial/orcamentos/${row.original.id}`)
+      }
+    },
+    {
+      type: 'separator' as const
     },
     {
       label: 'Converter em pedido',
@@ -174,9 +185,11 @@ const pagination = ref({
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-          <OrcamentosAddModal @created="refresh()" />
+          <UButton
+            label="Novo Orçamento"
+            icon="i-lucide-plus"
+            @click="router.push('/comercial/orcamentos/novo')"
+          />
         </template>
       </UDashboardNavbar>
     </template>

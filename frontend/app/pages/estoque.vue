@@ -122,10 +122,7 @@ const movColumns: TableColumn<EstoqueMovimentacao>[] = [
           <UDashboardSidebarCollapse />
         </template>
 
-        <template #right>
-          <BackToAdmin />
-          <CompanySelector />
-        </template>
+        <template #right />
       </UDashboardNavbar>
 
       <UDashboardToolbar>

@@ -44,6 +44,7 @@ class Company extends Model
         'csc_id',
         'csc_token',
         'is_active',
+        'office_plan_id',
     ];
 
     protected $hidden = [
@@ -64,6 +65,11 @@ class Company extends Model
     public function office(): BelongsTo
     {
         return $this->belongsTo(Office::class);
+    }
+
+    public function officePlan(): BelongsTo
+    {
+        return $this->belongsTo(OfficePlan::class);
     }
 
     public function users(): BelongsToMany
@@ -134,5 +140,41 @@ class Company extends Model
     public function nfses(): HasMany
     {
         return $this->hasMany(Nfse::class);
+    }
+
+    public function modules(): HasMany
+    {
+        return $this->hasMany(CompanyModule::class);
+    }
+
+    public function activeModules()
+    {
+        return $this->hasMany(CompanyModule::class)->where('is_active', true);
+    }
+
+    public function hasModule(string $module): bool
+    {
+        return $this->modules()->where('module', $module)->where('is_active', true)->exists();
+    }
+
+    public function getActiveModuleList(): array
+    {
+        return $this->modules()->where('is_active', true)->pluck('module')->toArray();
+    }
+
+    public static function availableModules(): array
+    {
+        return [
+            'nfe' => 'NF-e',
+            'nfce' => 'NFC-e',
+            'cte' => 'CT-e',
+            'mdfe' => 'MDF-e',
+            'nfse' => 'NFS-e',
+            'orcamento' => 'Orçamentos e Pedidos',
+            'estoque' => 'Estoque',
+            'financeiro' => 'Financeiro',
+            'restaurante' => 'Restaurante',
+            'relatorios' => 'Relatórios',
+        ];
     }
 }

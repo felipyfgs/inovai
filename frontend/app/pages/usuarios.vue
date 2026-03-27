@@ -245,8 +245,6 @@ async function confirmDelete() {
         </template>
 
         <template #right>
-          <BackToAdmin />
-          <CompanySelector />
           <UsuariosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>
