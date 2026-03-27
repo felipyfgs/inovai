@@ -33,6 +33,9 @@ class Pessoa extends Model
         'celular',
         'email',
         'observacoes',
+        'condicao_pagamento',
+        'prazo_entrega',
+        'avaliacao',
         'is_active',
     ];
 

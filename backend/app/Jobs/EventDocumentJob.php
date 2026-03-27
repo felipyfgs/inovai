@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Mdfe;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use App\Services\SefazService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +39,7 @@ class EventDocumentJob implements ShouldQueue
 
     private function eventNfe(SefazService $sefazService): void
     {
-        $nota = NotaFiscal::findOrFail($this->documentId);
+        $nota = Nfe::findOrFail($this->documentId);
 
         if ($nota->status !== 'autorizada') {
             return;

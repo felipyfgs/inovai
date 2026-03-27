@@ -12,7 +12,7 @@ return new class extends Migration
         DB::statement('CREATE INDEX IF NOT EXISTS idx_produtos_codigo_barras ON produtos (company_id, codigo_barras)');
         DB::statement('CREATE INDEX IF NOT EXISTS idx_orcamentos_data ON orcamentos (company_id, data DESC)');
         DB::statement('CREATE INDEX IF NOT EXISTS idx_pedidos_data ON pedidos (company_id, data DESC)');
-        DB::statement('CREATE INDEX IF NOT EXISTS idx_notas_fiscais_data_emissao ON notas_fiscais (company_id, data_emissao)');
+        DB::statement('CREATE INDEX IF NOT EXISTS idx_nfes_data_emissao ON nfes (company_id, data_emissao)');
         DB::statement('CREATE INDEX IF NOT EXISTS idx_ctes_data_emissao ON ctes (company_id, data_emissao)');
         DB::statement('CREATE INDEX IF NOT EXISTS idx_mdfes_data_emissao ON mdfes (company_id, data_emissao)');
     }
@@ -23,7 +23,7 @@ return new class extends Migration
         Schema::dropIndexIfExists('idx_produtos_codigo_barras');
         Schema::dropIndexIfExists('idx_orcamentos_data');
         Schema::dropIndexIfExists('idx_pedidos_data');
-        Schema::dropIndexIfExists('idx_notas_fiscais_data_emissao');
+        Schema::dropIndexIfExists('idx_nfes_data_emissao');
         Schema::dropIndexIfExists('idx_ctes_data_emissao');
         Schema::dropIndexIfExists('idx_mdfes_data_emissao');
     }

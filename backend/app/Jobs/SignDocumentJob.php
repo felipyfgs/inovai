@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Cte;
 use App\Models\Mdfe;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use App\Services\CteXmlService;
 use App\Services\FiscalNumberService;
 use App\Services\MdfeXmlService;
@@ -48,7 +48,7 @@ class SignDocumentJob implements ShouldQueue
 
     private function signNfe(SefazService $sefazService, NfeXmlService $nfeXmlService, FiscalNumberService $fiscalNumberService): void
     {
-        $nota = NotaFiscal::findOrFail($this->documentId);
+        $nota = Nfe::findOrFail($this->documentId);
 
         if (! in_array($nota->status, ['rascunho', 'rejeitada'])) {
             return;

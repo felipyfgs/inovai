@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Cte;
 use App\Models\Mdfe;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,8 +22,8 @@ class OfficeDashboardController extends Controller
             $companies = Company::where('office_id', $officeId)->get();
             $companyIds = $companies->pluck('id');
 
-            $totalNfe = NotaFiscal::whereIn('company_id', $companyIds)->count();
-            $nfeAutorizadas = NotaFiscal::whereIn('company_id', $companyIds)->where('status', 'autorizada')->count();
+            $totalNfe = Nfe::whereIn('company_id', $companyIds)->count();
+            $nfeAutorizadas = Nfe::whereIn('company_id', $companyIds)->where('status', 'autorizada')->count();
             $totalCte = Cte::whereIn('company_id', $companyIds)->count();
             $totalMdfe = Mdfe::whereIn('company_id', $companyIds)->count();
 

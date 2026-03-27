@@ -3,27 +3,39 @@ import type { TableColumn } from '@nuxt/ui'
 import { upperFirst } from 'scule'
 import { getPaginationRowModel } from '@tanstack/table-core'
 import type { Row } from '@tanstack/table-core'
-import type { NotaFiscal, PaginatedResponse } from '~/types'
+import type { Nfe } from '~/types'
 import { formatCurrency } from '~/utils'
 
 import { UButton, UBadge, UDropdownMenu, UCheckbox } from '#components'
 
 const toast = useToast()
 const table = useTemplateRef('table')
-const { currentCompany } = useCurrentCompany()
+const { listNfes } = useNfe()
 
 const columnFilters = ref([])
 const columnVisibility = ref()
 const rowSelection = ref({})
 
-const { data, status } = useApi<PaginatedResponse<NotaFiscal>>('/notas-fiscais?modelo=55', {
-  lazy: true,
-  watch: [computed(() => currentCompany.value?.id)]
-})
+const { data, status, refresh } = listNfes(55)
 
 const notas = computed(() => data.value?.data || [])
 
-function getRowItems(row: Row<NotaFiscal>) {
+const cancelModalRef = useTemplateRef('cancelModalRef')
+const deleteModalRef = useTemplateRef('deleteModalRef')
+const cancelTarget = ref<Nfe | null>(null)
+const deleteTarget = ref<Nfe | null>(null)
+
+function openCancel(row: Row<Nfe>) {
+  cancelTarget.value = row.original
+  cancelModalRef.value?.openModal()
+}
+
+function openDelete(row: Row<Nfe>) {
+  deleteTarget.value = row.original
+  deleteModalRef.value?.openModal()
+}
+
+function getRowItems(row: Row<Nfe>) {
   return [
     {
       type: 'label' as const,
@@ -49,12 +61,24 @@ function getRowItems(row: Row<NotaFiscal>) {
     {
       label: 'Cancelar NF-e',
       icon: 'i-lucide-x-circle',
-      color: 'error' as const
+      color: 'error' as const,
+      disabled: row.original.status !== 'autorizada',
+      onSelect() {
+        openCancel(row)
+      }
+    },
+    {
+      label: 'Excluir',
+      icon: 'i-lucide-trash',
+      color: 'error' as const,
+      onSelect() {
+        openDelete(row)
+      }
     }
   ]
 }
 
-const columns: TableColumn<NotaFiscal>[] = [
+const columns: TableColumn<Nfe>[] = [
   {
     id: 'select',
     header: ({ table }) =>
@@ -84,7 +108,7 @@ const columns: TableColumn<NotaFiscal>[] = [
   {
     accessorKey: 'data_emissao',
     header: 'Emissão',
-    cell: ({ row }) => new Date(row.original.data_emissao).toLocaleDateString('pt-BR')
+    cell: ({ row }) => row.original.data_emissao ? new Date(row.original.data_emissao).toLocaleDateString('pt-BR') : '—'
   },
   {
     accessorFn: row => row.pessoa?.razao_social || '—',
@@ -160,12 +184,7 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
         <template #right>
           <BackToAdmin />
           <CompanySelector />
-          <UButton
-            label="Nova NF-e"
-            icon="i-lucide-plus"
-            size="md"
-            class="rounded-full"
-          />
+          <NotasFiscaisAddModal @created="refresh" />
         </template>
       </UDashboardNavbar>
     </template>
@@ -252,6 +271,19 @@ const pagination = ref({ pageIndex: 0, pageSize: 10 })
           />
         </div>
       </div>
+
+      <NotasFiscaisCancelModal
+        v-if="cancelTarget"
+        ref="cancelModalRef"
+        :nota="cancelTarget"
+        @cancelled="refresh"
+      />
+      <NotasFiscaisDeleteModal
+        v-if="deleteTarget"
+        ref="deleteModalRef"
+        :nota="deleteTarget"
+        @deleted="refresh"
+      />
     </template>
   </UDashboardPanel>
 </template>

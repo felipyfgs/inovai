@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Company;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use App\Models\Office;
 use Carbon\Carbon;
 
@@ -67,7 +67,7 @@ class PlanLimitService
      */
     public function getNfCountCurrentMonth(Company $company): int
     {
-        return NotaFiscal::where('company_id', $company->id)
+        return Nfe::where('company_id', $company->id)
             ->whereYear('data_emissao', Carbon::now()->year)
             ->whereMonth('data_emissao', Carbon::now()->month)
             ->whereIn('status', ['autorizada', 'emitindo', 'pendente'])

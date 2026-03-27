@@ -3,81 +3,81 @@
 namespace App\Services;
 
 use App\Models\Company;
-use App\Models\NotaFiscal;
-use App\Models\NotaFiscalItem;
+use App\Models\Nfe;
+use App\Models\NfeItem;
 use Illuminate\Support\Facades\Config;
 use NFePHP\NFe\Make;
 
 class NfeXmlService
 {
-    public function make(NotaFiscal $nota): string
+    public function make(Nfe $nfe): string
     {
-        $nota->loadMissing([
+        $nfe->loadMissing([
             'company',
             'pessoa',
             'transportadora',
             'itens.produto',
         ]);
 
-        $company = $nota->company;
-        $pessoa = $nota->pessoa;
-        $isNfce = $nota->isNfce();
+        $company = $nfe->company;
+        $pessoa = $nfe->pessoa;
+        $isNfce = $nfe->isNfce();
         $versao = Config::get('fiscal.nfe.versao', '4.00');
 
-        $nfe = new Make;
+        $maker = new Make;
         $std = new \stdClass;
         $std->versao = $versao;
         $std->Id = null;
         $std->pk_nItem = '';
-        $nfe->taginfNFe($std);
+        $maker->taginfNFe($std);
 
-        $this->tagIde($nfe, $nota, $company, $isNfce);
-        $this->tagEmit($nfe, $company);
-        $this->tagDest($nfe, $pessoa, $nota);
+        $this->tagIde($maker, $nfe, $company, $isNfce);
+        $this->tagEmit($maker, $company);
+        $this->tagDest($maker, $pessoa, $nfe);
 
-        foreach ($nota->itens as $index => $item) {
-            $this->tagDet($nfe, $item, $index + 1);
+        foreach ($nfe->itens as $index => $item) {
+            $this->tagDet($maker, $item, $index + 1);
         }
 
-        $this->tagTotal($nfe, $nota);
-        $this->tagTransp($nfe, $nota);
-        $this->tagPag($nfe, $nota);
+        $this->tagTotal($maker, $nfe);
+        $this->tagTransp($maker, $nfe);
+        $this->tagPag($maker, $nfe);
 
-        if ($nota->informacoes_adicionais) {
+        if ($nfe->informacoes_adicionais) {
             $std = new \stdClass;
-            $std->infAdFisco = $nota->informacoes_fisco;
-            $std->infCpl = $nota->informacoes_adicionais;
-            $nfe->taginfAdic($std);
+            $std->infAdFisco = $nfe->informacoes_fisco;
+            $std->infCpl = $nfe->informacoes_adicionais;
+            $maker->taginfAdic($std);
         }
 
-        return $nfe->getXML();
+        return $maker->getXML();
     }
 
-    private function tagIde(Make $nfe, NotaFiscal $nota, Company $company, bool $isNfce): void
+    private function tagIde(Make $nfe, Nfe $nfeRef, Company $company, bool $isNfce): void
     {
         $cUF = Config::get("fiscal.uf_cuf.{$company->uf}", 35);
 
         $std = new \stdClass;
         $std->cUF = $cUF;
         $std->cNF = str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-        $std->natOp = $nota->natureza_operacao;
-        $std->mod = $nota->modelo;
-        $std->serie = $nota->serie;
-        $std->nNF = $nota->numero;
-        $std->dhEmi = $nota->data_emissao->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d\TH:i:sP');
-        $std->dhSaiEnt = $nota->data_saida
-            ? $nota->data_saida->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d\TH:i:sP')
+        $std->natOp = $nfeRef->natureza_operacao;
+        $std->mod = $nfeRef->modelo;
+        $std->serie = $nfeRef->serie;
+        $std->nNF = $nfeRef->numero;
+        $std->dhEmi = $nfeRef->data_emissao->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d\TH:i:sP');
+        $std->dhSaiEnt = $nfeRef->data_saida
+            ? $nfeRef->data_saida->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d\TH:i:sP')
             : $std->dhEmi;
-        $std->tpNF = $nota->tipo_operacao;
-        $std->idDest = $this->getIdDest($company, $nota->pessoa);
+        $std->tpNF = $nfeRef->tipo_operacao;
+        $std->idDest = $this->getIdDest($company, $nfeRef->pessoa);
         $std->cMunFG = (int) $company->municipio_ibge;
         $std->tpImp = $isNfce ? 4 : 1;
-        $std->tpEmis = $nota->ambiente === 1 ? 1 : 2;
-        $std->cDV = $this->extractDV($nota->chave);
-        $std->tpAmb = $nota->ambiente;
-        $std->finNFe = $nota->finalidade;
-        $std->indFinal = $this->getIndFinal($nota);
-        $std->indPres = $this->getIndPres($nota);
+        $std->tpEmis = $nfeRef->ambiente === 1 ? 1 : 2;
+        $std->cDV = $this->extractDV($nfeRef->chave);
+        $std->tpAmb = $nfeRef->ambiente;
+        $std->finNFe = $nfeRef->finalidade;
+        $std->indFinal = $this->getIndFinal($nfeRef);
+        $std->indPres = $this->getIndPres($nfeRef);
         $std->procEmi = '0';
         $std->verProc = '1.00';
 
@@ -110,7 +110,7 @@ class NfeXmlService
         $nfe->tagenderEmit($std);
     }
 
-    private function tagDest(Make $nfe, $pessoa, NotaFiscal $nota): void
+    private function tagDest(Make $nfe, $pessoa, Nfe $nfeRef): void
     {
         if (! $pessoa) {
             return;
@@ -118,7 +118,7 @@ class NfeXmlService
 
         $std = new \stdClass;
         $std->xNome = mb_substr($pessoa->razao_social, 0, 60);
-        $std->indIEDest = $this->getIndIEDest($pessoa, $nota);
+        $std->indIEDest = $this->getIndIEDest($pessoa, $nfeRef);
         $std->IE = $pessoa->ie;
         $std->ISUF = null;
         $std->IM = $pessoa->im;
@@ -146,7 +146,7 @@ class NfeXmlService
         $nfe->tagenderDest($std);
     }
 
-    private function tagDet(Make $nfe, NotaFiscalItem $item, int $numeroItem): void
+    private function tagDet(Make $maker, NfeItem $item, int $numeroItem): void
     {
         $std = new \stdClass;
         $std->item = $numeroItem;
@@ -172,20 +172,20 @@ class NfeXmlService
         $std->indTot = 1;
         $std->nItemPed = null;
         $std->xPed = null;
-        $nfe->tagprod($std);
+        $maker->tagprod($std);
 
         $std = new \stdClass;
         $std->item = $numeroItem;
         $std->vTotTrib = 0;
-        $nfe->tagimposto($std);
+        $maker->tagimposto($std);
 
-        $this->tagIcms($nfe, $item, $numeroItem);
-        $this->tagIpi($nfe, $item, $numeroItem);
-        $this->tagPis($nfe, $item, $numeroItem);
-        $this->tagCofins($nfe, $item, $numeroItem);
+        $this->tagIcms($maker, $item, $numeroItem);
+        $this->tagIpi($maker, $item, $numeroItem);
+        $this->tagPis($maker, $item, $numeroItem);
+        $this->tagCofins($maker, $item, $numeroItem);
     }
 
-    private function tagIcms(Make $nfe, NotaFiscalItem $item, int $numeroItem): void
+    private function tagIcms(Make $maker, NfeItem $item, int $numeroItem): void
     {
         $origem = $item->origem ?? 0;
 
@@ -196,7 +196,7 @@ class NfeXmlService
             $std->CSOSN = $item->csosn;
             $std->pCredSN = 0;
             $std->vCredICMSSN = 0;
-            $nfe->tagICMSSN($std);
+            $maker->tagICMSSN($std);
         } elseif ($item->cst_icms) {
             $cst = $item->cst_icms;
 
@@ -219,11 +219,11 @@ class NfeXmlService
             $std->vBCFCPST = null;
             $std->pFCPST = null;
             $std->vFCPST = null;
-            $nfe->tagICMS($std);
+            $maker->tagICMS($std);
         }
     }
 
-    private function tagIpi(Make $nfe, NotaFiscalItem $item, int $numeroItem): void
+    private function tagIpi(Make $maker, NfeItem $item, int $numeroItem): void
     {
         if (! $item->cst_ipi) {
             return;
@@ -238,10 +238,10 @@ class NfeXmlService
         $std->vIPI = (float) ($item->valor_ipi ?? 0);
         $std->qUnid = null;
         $std->vUnid = null;
-        $nfe->tagIPI($std);
+        $maker->tagIPI($std);
     }
 
-    private function tagPis(Make $nfe, NotaFiscalItem $item, int $numeroItem): void
+    private function tagPis(Make $maker, NfeItem $item, int $numeroItem): void
     {
         if (! $item->cst_pis) {
             return;
@@ -255,10 +255,10 @@ class NfeXmlService
         $std->vPIS = (float) ($item->valor_pis ?? 0);
         $std->qBCProd = null;
         $std->vAliqProd = null;
-        $nfe->tagPIS($std);
+        $maker->tagPIS($std);
     }
 
-    private function tagCofins(Make $nfe, NotaFiscalItem $item, int $numeroItem): void
+    private function tagCofins(Make $maker, NfeItem $item, int $numeroItem): void
     {
         if (! $item->cst_cofins) {
             return;
@@ -272,43 +272,43 @@ class NfeXmlService
         $std->vCOFINS = (float) ($item->valor_cofins ?? 0);
         $std->qBCProd = null;
         $std->vAliqProd = null;
-        $nfe->tagCOFINS($std);
+        $maker->tagCOFINS($std);
     }
 
-    private function tagTotal(Make $nfe, NotaFiscal $nota): void
+    private function tagTotal(Make $maker, Nfe $nfe): void
     {
         $std = new \stdClass;
-        $std->vBC = (float) $nota->valor_icms;
-        $std->vICMS = (float) $nota->valor_icms;
+        $std->vBC = (float) $nfe->valor_icms;
+        $std->vICMS = (float) $nfe->valor_icms;
         $std->vICMSDeson = 0.00;
         $std->vFCP = 0.00;
-        $std->vBCST = (float) $nota->valor_icms_st;
-        $std->vST = (float) $nota->valor_icms_st;
+        $std->vBCST = (float) $nfe->valor_icms_st;
+        $std->vST = (float) $nfe->valor_icms_st;
         $std->vFCPST = 0.00;
         $std->vFCPSTRet = 0.00;
-        $std->vProd = (float) $nota->valor_produtos;
-        $std->vFrete = (float) $nota->valor_frete;
-        $std->vSeg = (float) $nota->valor_seguro;
-        $std->vDesc = (float) $nota->valor_desconto;
+        $std->vProd = (float) $nfe->valor_produtos;
+        $std->vFrete = (float) $nfe->valor_frete;
+        $std->vSeg = (float) $nfe->valor_seguro;
+        $std->vDesc = (float) $nfe->valor_desconto;
         $std->vII = 0.00;
-        $std->vIPI = (float) $nota->valor_ipi;
+        $std->vIPI = (float) $nfe->valor_ipi;
         $std->vIPIDevol = 0.00;
-        $std->vPIS = (float) $nota->valor_pis;
-        $std->vCOFINS = (float) $nota->valor_cofins;
-        $std->vOutro = (float) $nota->valor_outras;
-        $std->vNF = (float) $nota->valor_total;
+        $std->vPIS = (float) $nfe->valor_pis;
+        $std->vCOFINS = (float) $nfe->valor_cofins;
+        $std->vOutro = (float) $nfe->valor_outras;
+        $std->vNF = (float) $nfe->valor_total;
         $std->vTotTrib = 0.00;
-        $nfe->tagICMSTot($std);
+        $maker->tagICMSTot($std);
     }
 
-    private function tagTransp(Make $nfe, NotaFiscal $nota): void
+    private function tagTransp(Make $maker, Nfe $nfe): void
     {
         $std = new \stdClass;
-        $std->modFrete = $nota->frete_por ?? 9;
-        $nfe->tagtransp($std);
+        $std->modFrete = $nfe->frete_por ?? 9;
+        $maker->tagtransp($std);
 
-        if ($nota->transportadora) {
-            $t = $nota->transportadora;
+        if ($nfe->transportadora) {
+            $t = $nfe->transportadora;
             $std = new \stdClass;
             $std->xNome = mb_substr($t->razao_social, 0, 60);
             $std->CNPJ = preg_replace('/\D/', '', $t->cnpj);
@@ -316,31 +316,31 @@ class NfeXmlService
             $std->xEnder = "{$t->logradouro}, {$t->numero}";
             $std->xMun = $t->municipio;
             $std->UF = $t->uf;
-            $nfe->tagtransporta($std);
+            $maker->tagtransporta($std);
 
-            if ($nota->transportadora->veiculos->isNotEmpty()) {
-                $veiculo = $nota->transportadora->veiculos->first();
+            if ($nfe->transportadora->veiculos->isNotEmpty()) {
+                $veiculo = $nfe->transportadora->veiculos->first();
                 $std = new \stdClass;
                 $std->placa = $veiculo->placa ?? '';
                 $std->UF = $veiculo->uf ?? '';
                 $std->RNTC = '';
-                $nfe->tagveicTransp($std);
+                $maker->tagveicTransp($std);
             }
         }
     }
 
-    private function tagPag(Make $nfe, NotaFiscal $nota): void
+    private function tagPag(Make $maker, Nfe $nfe): void
     {
         $std = new \stdClass;
         $std->vTroco = 0;
-        $nfe->tagpag($std);
+        $maker->tagpag($std);
 
         $std = new \stdClass;
         $std->indPag = 0;
         $std->tPag = '01';
-        $std->vPag = (float) $nota->valor_total;
+        $std->vPag = (float) $nfe->valor_total;
         $std->indPag = 0;
-        $nfe->tagdetPag($std);
+        $maker->tagdetPag($std);
     }
 
     private function getIdDest(Company $company, $pessoa): int
@@ -356,23 +356,23 @@ class NfeXmlService
         return 2;
     }
 
-    private function getIndFinal(NotaFiscal $nota): int
+    private function getIndFinal(Nfe $nfe): int
     {
-        return $nota->isNfce() ? 1 : 0;
+        return $nfe->isNfce() ? 1 : 0;
     }
 
-    private function getIndPres(NotaFiscal $nota): int
+    private function getIndPres(Nfe $nfe): int
     {
-        if ($nota->isNfce()) {
+        if ($nfe->isNfce()) {
             return 1;
         }
 
         return 0;
     }
 
-    private function getIndIEDest($pessoa, NotaFiscal $nota): int
+    private function getIndIEDest($pessoa, Nfe $nfe): int
     {
-        if ($nota->tipo_operacao === 0) {
+        if ($nfe->tipo_operacao === 0) {
             return 2;
         }
 
@@ -380,7 +380,7 @@ class NfeXmlService
             return 9;
         }
 
-        return empty($pessoa->ie) ? 2 : ($pessoa->uf === $nota->company->uf ? 1 : 2);
+        return empty($pessoa->ie) ? 2 : ($pessoa->uf === $nfe->company->uf ? 1 : 2);
     }
 
     private function extractDV(?string $chave): int

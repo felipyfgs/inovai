@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estoque;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +16,7 @@ class CompanyDashboardController extends Controller
         $cacheKey = "dashboard:company:{$company->id}";
 
         $data = Cache::remember($cacheKey, 300, function () use ($company) {
-            $nfeMes = NotaFiscal::where('company_id', $company->id)
+            $nfeMes = Nfe::where('company_id', $company->id)
                 ->whereMonth('data_emissao', now()->month)
                 ->whereYear('data_emissao', now()->year);
 

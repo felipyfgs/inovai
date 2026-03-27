@@ -199,15 +199,278 @@ export interface Company {
   municipio_ibge: string | null
   uf: string | null
   cep: string | null
+  pais: string | null
+  pais_ibge: string | null
   telefone: string | null
   email: string | null
   ambiente: 'homologacao' | 'producao'
   certificado_validade: string | null
+  tem_certificado?: boolean
   serie_nfe: number
   proximo_numero_nfe: number
   serie_nfce: number
   proximo_numero_nfce: number
+  serie_cte: number
+  proximo_numero_cte: number
+  serie_mdfe: number
+  proximo_numero_mdfe: number
+  csc_id: string | null
+  csc_token: string | null
   is_active: boolean
+}
+
+export interface EmitenteCertificado {
+  tem_certificado: boolean
+  validade: string | null
+  info?: {
+    cnpj: string
+    razao_social: string
+    valido_de: string
+    valido_ate: string
+    expirado: boolean
+    erro?: string
+  }
+}
+
+export interface Estoque {
+  id: number
+  company_id: number
+  produto_id: number
+  quantidade: number
+  custo_medio: number
+  localizacao: string | null
+  produto?: Produto
+}
+
+export interface EstoqueMovimentacao {
+  id: number
+  estoque_id: number
+  user_id: number
+  tipo: 'entrada' | 'saida' | 'ajuste'
+  quantidade: number
+  custo_unitario: number
+  documento_tipo: string | null
+  documento_id: number | null
+  observacoes: string | null
+  data: string
+  estoque?: Estoque
+  user?: AppUser
+}
+
+export interface EstoqueResumo {
+  total_produtos: number
+  com_estoque: number
+  sem_estoque: number
+  estoque_baixo: number
+  valor_total_estoque: number
+}
+
+export interface Conta {
+  id: number
+  company_id: number
+  tipo: 'pagar' | 'receber'
+  pessoa_id: number | null
+  descricao: string
+  documento: string | null
+  pedido_id: number | null
+  categoria: string | null
+  data_emissao: string
+  data_vencimento: string
+  data_baixa: string | null
+  valor_original: number
+  valor_desconto: number
+  valor_juros: number
+  valor_multa: number
+  valor_baixado: number
+  status: 'pendente' | 'pago_parcial' | 'pago' | 'vencido' | 'cancelado'
+  observacoes: string | null
+  parcelas_count?: number
+  pessoa?: Pessoa
+  parcelas?: ContaParcela[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ContaParcela {
+  id: number
+  conta_id: number
+  numero: number
+  data_vencimento: string
+  data_baixa: string | null
+  valor: number
+  valor_desconto: number
+  valor_juros: number
+  valor_multa: number
+  valor_baixado: number
+  forma_pagamento: string | null
+  observacoes: string | null
+  status: 'pendente' | 'pago_parcial' | 'pago'
+}
+
+export interface ContaMovimentacao {
+  id: number
+  conta_id: number
+  parcela_id: number | null
+  user_id: number
+  tipo: 'entrada' | 'saida'
+  valor: number
+  forma_pagamento: string | null
+  observacoes: string | null
+  data: string
+}
+
+export interface FinanceiroResumo {
+  total_a_pagar: number
+  total_a_receber: number
+  total_vencido: number
+  total_a_vencer_30: number
+  saldo_previsto: number
+}
+
+export interface Fornecedor extends Pessoa {
+  condicao_pagamento: string | null
+  prazo_entrega: number | null
+  avaliacao: number | null
+}
+
+export type NfseStatus = 'rascunho' | 'assinada' | 'transmitida' | 'autorizada' | 'rejeitada' | 'cancelada'
+
+export interface Nfse {
+  id: number
+  company_id: number
+  pessoa_id: number | null
+  serie: string
+  numero: number
+  chave: string | null
+  codigo_verificacao: string | null
+  data_emissao: string
+  data_competencia: string
+  status: NfseStatus
+  ambiente: number
+  natureza_operacao: string
+  codigo_servico: string
+  descricao_servico: string
+  valor_servico: number
+  valor_deducoes: number
+  valor_desconto: number
+  valor_ir: number
+  valor_inss: number
+  valor_pis: number
+  valor_cofins: number
+  valor_csll: number
+  valor_outras: number
+  valor_total: number
+  cnae: string | null
+  cidade_ibge: string
+  cidade: string
+  uf: string
+  tomador_nome: string | null
+  tomador_cpf_cnpj: string | null
+  tomador_logradouro: string | null
+  tomador_numero: string | null
+  tomador_bairro: string | null
+  tomador_cep: string | null
+  tomador_municipio: string | null
+  tomador_uf: string | null
+  tomador_email: string | null
+  tomador_telefone: string | null
+  protocolo: string | null
+  motivo: string | null
+  informacoes_adicionais: string | null
+  pessoa?: Pessoa
+  itens?: NfseItem[]
+  created_at: string
+  updated_at: string
+}
+
+export interface NfseItem {
+  id: number
+  nfse_id: number
+  numero_item: number
+  discriminacao: string
+  quantidade: number
+  unidade: string | null
+  valor_unitario: number
+  valor_total: number
+}
+
+export interface NfseEvento {
+  id: number
+  nfse_id: number
+  tipo: string
+  sequencia: number
+  protocolo: string | null
+  justificativa: string | null
+  status: string | null
+  created_at: string
+}
+
+export interface RestauranteMesa {
+  id: number
+  company_id: number
+  nome: string
+  capacidade: number
+  status: 'livre' | 'ocupada' | 'reservada' | 'inativa'
+  localizacao: string | null
+}
+
+export interface RestauranteCardapioGrupo {
+  id: number
+  company_id: number
+  nome: string
+  ordem: number
+  is_active: boolean
+  itens?: RestauranteCardapioItem[]
+}
+
+export interface RestauranteCardapioItem {
+  id: number
+  company_id: number
+  grupo_id: number
+  nome: string
+  descricao: string | null
+  preco: number
+  imagem_url: string | null
+  is_active: boolean
+  disponivel: boolean
+  codigo: string | null
+}
+
+export interface RestauranteComanda {
+  id: number
+  company_id: number
+  mesa_id: number | null
+  garcom_id: number | null
+  codigo: string
+  status: 'aberta' | 'fechada' | 'cancelada'
+  valor_total: number
+  desconto: number
+  opened_at: string
+  closed_at: string | null
+  pessoas: number
+  mesa?: RestauranteMesa
+  garcom?: AppUser
+  itens?: RestauranteComandaItem[]
+}
+
+export interface RestauranteComandaItem {
+  id: number
+  comanda_id: number
+  item_id: number
+  quantidade: number
+  preco_unitario: number
+  valor_total: number
+  observacoes: string | null
+  status: 'pendente' | 'preparando' | 'pronto' | 'entregue' | 'cancelado'
+  created_at: string
+  item?: RestauranteCardapioItem
+}
+
+export interface RestauranteResumo {
+  mesas_livres: number
+  mesas_ocupadas: number
+  comandas_abertas: number
+  receita_hoje: number
 }
 
 export interface Pessoa {
@@ -290,7 +553,7 @@ export interface Pedido {
   pessoa?: Pessoa
 }
 
-export interface NotaFiscal {
+export interface Nfe {
   id: number
   company_id: number
   pessoa_id: number | null
@@ -325,17 +588,17 @@ export interface NotaFiscal {
   informacoes_adicionais: string | null
   pessoa?: Pessoa
   transportadora?: Transportadora
-  itens?: NotaFiscalItem[]
+  itens?: NfeItem[]
   itens_count?: number
-  eventos?: NotaFiscalEvento[]
+  eventos?: NfeEvento[]
   eventos_count?: number
   created_at: string
   updated_at: string
 }
 
-export interface NotaFiscalItem {
+export interface NfeItem {
   id: number
-  nota_fiscal_id: number
+  nfe_id: number
   produto_id: number | null
   numero_item: number
   codigo: string
@@ -375,9 +638,9 @@ export interface NotaFiscalItem {
   produto?: Produto
 }
 
-export interface NotaFiscalEvento {
+export interface NfeEvento {
   id: number
-  nota_fiscal_id: number
+  nfe_id: number
   tipo: string
   sequencia: number
   protocolo: string | null

@@ -11,9 +11,15 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\ContaController;
 use App\Http\Controllers\CteController;
+use App\Http\Controllers\EmitenteController;
+use App\Http\Controllers\EstoqueController;
+use App\Http\Controllers\FornecedorController;
 use App\Http\Controllers\MdfeController;
-use App\Http\Controllers\NotaFiscalController;
+use App\Http\Controllers\NfseController;
+use App\Http\Controllers\RestauranteController;
+use App\Http\Controllers\NfeController;
 use App\Http\Controllers\OfficeDashboardController;
 use App\Http\Controllers\OfficeProfileController;
 use App\Http\Controllers\OrcamentoController;
@@ -96,10 +102,36 @@ Route::middleware('auth:sanctum')->group(function () {
             // Dashboard per company
             Route::get('/dashboard/company', [CompanyDashboardController::class, 'index']);
 
+            // Emitente configuration
+            Route::get('/emitente', [EmitenteController::class, 'show']);
+            Route::put('/emitente/dados', [EmitenteController::class, 'updateDados']);
+            Route::put('/emitente/numeracao', [EmitenteController::class, 'updateNumeracao']);
+            Route::put('/emitente/csc', [EmitenteController::class, 'updateCsc']);
+            Route::put('/emitente/ambiente', [EmitenteController::class, 'updateAmbiente']);
+            Route::get('/emitente/certificado', [EmitenteController::class, 'certificado']);
+            Route::post('/emitente/certificado', [EmitenteController::class, 'uploadCertificado']);
+            Route::delete('/emitente/certificado', [EmitenteController::class, 'removerCertificado']);
+
+            // Estoque
+            Route::get('/estoques', [EstoqueController::class, 'index']);
+            Route::post('/estoques/ajuste', [EstoqueController::class, 'ajuste']);
+            Route::get('/estoques/movimentacoes', [EstoqueController::class, 'movimentacoes']);
+            Route::get('/estoques/resumo', [EstoqueController::class, 'resumo']);
+
+            // Financeiro
+            Route::get('/contas/resumo', [ContaController::class, 'resumo']);
+            Route::apiResource('contas', ContaController::class);
+            Route::post('contas-parcelas/{parcela}/baixar', [ContaController::class, 'baixarParcela']);
+            Route::post('contas-parcelas/{parcela}/estornar', [ContaController::class, 'estornarParcela']);
+            Route::post('contas/{conta}/cancelar', [ContaController::class, 'cancelar']);
+
             // Cadastros
             Route::apiResource('pessoas', PessoaController::class);
             Route::apiResource('produtos', ProdutoController::class);
             Route::apiResource('transportadoras', TransportadoraController::class);
+            Route::get('/fornecedores', [FornecedorController::class, 'index']);
+            Route::get('/fornecedores/{pessoa}', [FornecedorController::class, 'show']);
+            Route::put('/fornecedores/{pessoa}', [FornecedorController::class, 'update']);
 
             // Comercial
             Route::apiResource('orcamentos', OrcamentoController::class);
@@ -107,12 +139,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('pedidos', PedidoController::class);
 
             // Fiscal
-            Route::apiResource('notas-fiscais', NotaFiscalController::class);
-            Route::post('notas-fiscais/{notaFiscal}/sign', [NotaFiscalController::class, 'sign']);
-            Route::post('notas-fiscais/{notaFiscal}/transmit', [NotaFiscalController::class, 'transmit']);
-            Route::post('notas-fiscais/{notaFiscal}/cancel', [NotaFiscalController::class, 'cancel']);
-            Route::post('notas-fiscais/{notaFiscal}/carta-correcao', [NotaFiscalController::class, 'cartaCorrecao']);
-            Route::get('notas-fiscais/{notaFiscal}/xml', [NotaFiscalController::class, 'getXml']);
+            Route::apiResource('nfses', NfseController::class);
+            Route::post('nfses/{nfse}/cancelar', [NfseController::class, 'cancelar']);
+            Route::apiResource('nfes', NfeController::class);
+            Route::post('nfes/{notaFiscal}/sign', [NfeController::class, 'sign']);
+            Route::post('nfes/{notaFiscal}/transmit', [NfeController::class, 'transmit']);
+            Route::post('nfes/{notaFiscal}/cancel', [NfeController::class, 'cancel']);
+            Route::post('nfes/{notaFiscal}/carta-correcao', [NfeController::class, 'cartaCorrecao']);
+            Route::get('nfes/{notaFiscal}/xml', [NfeController::class, 'getXml']);
 
             Route::apiResource('ctes', CteController::class);
             Route::post('ctes/{cte}/sign', [CteController::class, 'sign']);
@@ -126,6 +160,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('mdfes/{mdfe}/cancel', [MdfeController::class, 'cancel']);
             Route::post('mdfes/{mdfe}/encerrar', [MdfeController::class, 'encerrar']);
             Route::get('mdfes/{mdfe}/xml', [MdfeController::class, 'getXml']);
+
+            // Restaurante
+            Route::get('/restaurante/resumo', [RestauranteController::class, 'resumido']);
+            Route::get('/restaurante/mesas', [RestauranteController::class, 'mesas']);
+            Route::post('/restaurante/mesas', [RestauranteController::class, 'createMesa']);
+            Route::get('/restaurante/cardapio', [RestauranteController::class, 'cardapio']);
+            Route::post('/restaurante/cardapio/itens', [RestauranteController::class, 'createItem']);
+            Route::get('/restaurante/comandas', [RestauranteController::class, 'comandas']);
+            Route::post('/restaurante/comandas', [RestauranteController::class, 'abrirComanda']);
+            Route::post('/restaurante/comandas/{comanda}/itens', [RestauranteController::class, 'addItem']);
+            Route::post('/restaurante/comandas/{comanda}/fechar', [RestauranteController::class, 'fecharComanda']);
         });
     });
 

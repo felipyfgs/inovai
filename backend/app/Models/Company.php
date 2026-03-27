@@ -106,9 +106,9 @@ class Company extends Model
         return $this->hasMany(Pedido::class);
     }
 
-    public function notasFiscais(): HasMany
+    public function nfes(): HasMany
     {
-        return $this->hasMany(NotaFiscal::class);
+        return $this->hasMany(Nfe::class);
     }
 
     public function ctes(): HasMany
@@ -124,5 +124,15 @@ class Company extends Model
     public function estoques(): HasMany
     {
         return $this->hasMany(Estoque::class);
+    }
+
+    public function contas(): HasMany
+    {
+        return $this->hasMany(Conta::class);
+    }
+
+    public function nfses(): HasMany
+    {
+        return $this->hasMany(Nfse::class);
     }
 }

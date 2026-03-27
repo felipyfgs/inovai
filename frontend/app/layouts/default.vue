@@ -26,6 +26,12 @@ const companyLinks = [{
       open.value = false
     }
   }, {
+    label: 'Fornecedores',
+    to: '/cadastros/fornecedores',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
     label: 'Produtos',
     to: '/cadastros/produtos',
     onSelect: () => {
@@ -85,7 +91,39 @@ const companyLinks = [{
     onSelect: () => {
       open.value = false
     }
+  }, {
+    label: 'NFS-e',
+    to: '/fiscal/nfse',
+    onSelect: () => {
+      open.value = false
+    }
   }]
+}, {
+  label: 'Financeiro',
+  icon: 'i-lucide-wallet',
+  type: 'trigger' as const,
+  module: 'financeiro',
+  children: [{
+    label: 'Contas a Pagar',
+    to: '/financeiro/contas-pagar',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Contas a Receber',
+    to: '/financeiro/contas-receber',
+    onSelect: () => {
+      open.value = false
+    }
+  }]
+}, {
+  label: 'Restaurante',
+  icon: 'i-lucide utensils',
+  to: '/restaurante',
+  module: 'restaurante',
+  onSelect: () => {
+    open.value = false
+  }
 }, {
   label: 'Estoque',
   icon: 'i-lucide-warehouse',
@@ -133,6 +171,12 @@ const configLink = {
       open.value = false
     }
   } as NavigationMenuItem, {
+    label: 'Emitente',
+    to: '/configuracoes/emitente',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
     label: 'Integrações',
     to: '/settings/integrations',
     onSelect: () => {

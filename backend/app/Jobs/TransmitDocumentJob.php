@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Cte;
 use App\Models\Mdfe;
-use App\Models\NotaFiscal;
+use App\Models\Nfe;
 use App\Services\FiscalNumberService;
 use App\Services\SefazService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -43,7 +43,7 @@ class TransmitDocumentJob implements ShouldQueue
 
     private function transmitNfe(SefazService $sefazService, FiscalNumberService $fiscalNumberService): void
     {
-        $nota = NotaFiscal::findOrFail($this->documentId);
+        $nota = Nfe::findOrFail($this->documentId);
 
         if ($nota->status !== 'assinada') {
             return;

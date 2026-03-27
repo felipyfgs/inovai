@@ -49,8 +49,8 @@ class Pedido extends Model
         return $this->hasMany(PedidoItem::class);
     }
 
-    public function notasFiscais(): HasMany
+    public function nfes(): HasMany
     {
-        return $this->hasMany(NotaFiscal::class);
+        return $this->hasMany(Nfe::class);
     }
 }
