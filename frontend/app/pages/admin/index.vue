@@ -125,40 +125,9 @@ const statCards = computed(() => [
           </UPageCard>
         </UPageGrid>
 
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div class="lg:col-span-3">
-            <AdminDashboardChart :period="period" :range="range" />
-          </div>
-          <div class="lg:col-span-2">
-            <AdminDashboardPlansChart />
-          </div>
-        </div>
+        <AdminDashboardChart :period="period" :range="range" />
 
-        <AdminDashboardStatusChart :period="period" :range="range" />
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <AdminDashboardGrowthChart :period="period" :range="range" />
-          <AdminDashboardOverdueChart :period="period" :range="range" />
-        </div>
-
-        <UPageCard
-          v-if="stats"
-          title="Taxa de Inadimplência"
-          variant="subtle"
-        >
-          <div class="flex items-center gap-4">
-            <UProgress
-              :value="stats.churn_rate"
-              :max="100"
-              color="error"
-              class="flex-1"
-            />
-            <span class="text-sm font-medium w-12 text-right">{{ stats.churn_rate }}%</span>
-          </div>
-          <p class="text-sm text-muted mt-2">
-            {{ stats.inadimplentes }} de {{ stats.total_offices }} clientes com faturas vencidas
-          </p>
-        </UPageCard>
+        <AdminDashboardPlansChart />
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UButton

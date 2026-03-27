@@ -121,6 +121,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
     <template #body>
       <UForm
+        ref="formRef"
         :schema="schema"
         :state="state"
         class="space-y-4"

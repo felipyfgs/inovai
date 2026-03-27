@@ -4,7 +4,14 @@ import type { AuthUser, Company } from '~/types'
 const colorMode = useColorMode()
 const { user } = useSanctumAuth<AuthUser>()
 const { getStoredCompanyId, setCompany } = useCurrentCompany()
+const { setOffice } = useCurrentOffice()
 const { $sanctumClient } = useNuxtApp()
+
+watch(() => user.value?.office, (office) => {
+  if (office) {
+    setOffice(office)
+  }
+}, { immediate: true })
 
 onMounted(async () => {
   const storedId = getStoredCompanyId()

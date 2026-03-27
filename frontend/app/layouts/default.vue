@@ -95,6 +95,14 @@ const companyLinks = [{
     open.value = false
   }
 }, {
+  label: 'Escritório',
+  icon: 'i-lucide-building',
+  to: '/escritorio',
+  module: 'dashboard-office',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
   label: 'Empresas',
   icon: 'i-lucide-building-2',
   to: '/empresas',

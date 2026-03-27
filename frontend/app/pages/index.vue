@@ -1,11 +1,13 @@
 <script setup lang="ts">
 const { currentCompany } = useCurrentCompany()
 const { currentOffice } = useCurrentOffice()
-const { isPlatformAdmin } = useAccessContext()
+const { isPlatformAdmin, isOfficeAdmin } = useAccessContext()
 
 onMounted(() => {
   if (isPlatformAdmin.value) {
     navigateTo('/admin')
+  } else if (isOfficeAdmin.value && !currentCompany.value) {
+    navigateTo('/escritorio')
   } else if (!currentOffice.value && !currentCompany.value) {
     navigateTo('/empresas')
   }

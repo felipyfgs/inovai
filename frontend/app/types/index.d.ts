@@ -294,17 +294,207 @@ export interface NotaFiscal {
   id: number
   company_id: number
   pessoa_id: number | null
+  pedido_id: number | null
+  transportadora_id: number | null
   modelo: 55 | 65
   serie: number
   numero: number
   chave: string | null
   natureza_operacao: string
-  data_emissao: string
+  tipo_operacao: string
+  finalidade: string
+  data_emissao: string | null
+  data_saida: string | null
   status: string
   ambiente: number
+  valor_produtos: number
+  valor_frete: number
+  valor_seguro: number
+  valor_desconto: number
+  valor_outras: number
+  valor_icms: number
+  valor_icms_st: number
+  valor_ipi: number
+  valor_pis: number
+  valor_cofins: number
   valor_total: number
+  frete_por: number | null
   protocolo: string | null
+  recibo: string | null
+  motivo: string | null
+  informacoes_adicionais: string | null
   pessoa?: Pessoa
+  transportadora?: Transportadora
+  itens?: NotaFiscalItem[]
+  itens_count?: number
+  eventos?: NotaFiscalEvento[]
+  eventos_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface NotaFiscalItem {
+  id: number
+  nota_fiscal_id: number
+  produto_id: number | null
+  numero_item: number
+  codigo: string
+  descricao: string
+  ncm: string | null
+  cest: string | null
+  cfop: string
+  unidade: string
+  quantidade: number
+  valor_unitario: number
+  valor_total: number
+  valor_desconto: number
+  valor_frete: number
+  valor_seguro: number
+  valor_outras: number
+  origem: number
+  cst_icms: string
+  csosn: string | null
+  bc_icms: number
+  aliq_icms: number
+  valor_icms: number
+  bc_icms_st: number
+  aliq_icms_st: number
+  valor_icms_st: number
+  cst_ipi: string
+  bc_ipi: number
+  aliq_ipi: number
+  valor_ipi: number
+  cst_pis: string
+  bc_pis: number
+  aliq_pis: number
+  valor_pis: number
+  cst_cofins: string
+  bc_cofins: number
+  aliq_cofins: number
+  valor_cofins: number
+  produto?: Produto
+}
+
+export interface NotaFiscalEvento {
+  id: number
+  nota_fiscal_id: number
+  tipo: string
+  sequencia: number
+  protocolo: string | null
+  justificativa: string | null
+  correcao: string | null
+  status: string
+  created_at: string
+}
+
+export type CteStatus = 'rascunho' | 'assinada' | 'transmitida' | 'autorizada' | 'rejeitada' | 'cancelada'
+export type CteModal = 1 | 2 | 3 | 4 | 5
+
+export interface Cte {
+  id: number
+  company_id: number
+  remetente_id: number | null
+  destinatario_id: number | null
+  expedidor_id: number | null
+  recebedor_id: number | null
+  tomador_id: number | null
+  tomador_tipo: number | null
+  modelo: number
+  serie: number
+  numero: number
+  chave: string | null
+  cfop: string | null
+  natureza_operacao: string | null
+  modal: CteModal | null
+  data_emissao: string | null
+  status: CteStatus
+  ambiente: number
+  valor_servico: number
+  valor_receber: number
+  valor_icms: number
+  valor_total: number
+  uf_inicio: string | null
+  uf_fim: string | null
+  protocolo: string | null
+  motivo: string | null
+  informacoes_adicionais: string | null
+  remetente?: Pessoa
+  destinatario?: Pessoa
+  expedidor?: Pessoa
+  recebedor?: Pessoa
+  tomador?: Pessoa
+  nfes?: CteNfe[]
+  eventos_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CteNfe {
+  id: number
+  cte_id: number
+  chave_nfe: string
+}
+
+export interface CteEvento {
+  id: number
+  cte_id: number
+  tipo: string
+  sequencia: number
+  protocolo: string | null
+  justificativa: string | null
+  correcao: string | null
+  status: string
+  created_at: string
+}
+
+export type MdfeStatus = 'rascunho' | 'assinada' | 'transmitida' | 'autorizada' | 'rejeitada' | 'cancelada' | 'encerrada'
+
+export interface Mdfe {
+  id: number
+  company_id: number
+  veiculo_id: number | null
+  motorista_id: number | null
+  modelo: number
+  serie: number
+  numero: number
+  chave: string | null
+  modal: number
+  data_emissao: string | null
+  status: MdfeStatus
+  ambiente: number
+  uf_carregamento: string
+  uf_descarregamento: string
+  veiculo_placa: string | null
+  motorista_cpf: string | null
+  motorista_nome: string | null
+  valor_carga: number
+  peso_bruto: number
+  uf_percurso: string[] | null
+  protocolo: string | null
+  motivo: string | null
+  informacoes_adicionais: string | null
+  documentos?: MdfeDocumento[]
+  eventos_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MdfeDocumento {
+  id: number
+  mdfe_id: number
+  tipo: 'nfe' | 'cte'
+  chave: string
+}
+
+export interface MdfeEvento {
+  id: number
+  mdfe_id: number
+  tipo: string
+  sequencia: number
+  protocolo: string | null
+  justificativa: string | null
+  status: string
+  created_at: string
 }
 
 export interface PaginatedResponse<T> {
@@ -313,11 +503,4 @@ export interface PaginatedResponse<T> {
   last_page: number
   per_page: number
   total: number
-}
-
-export type Period = 'daily' | 'weekly' | 'monthly'
-
-export interface Range {
-  start: Date
-  end: Date
 }

@@ -11,7 +11,11 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\CteController;
+use App\Http\Controllers\MdfeController;
+use App\Http\Controllers\NotaFiscalController;
 use App\Http\Controllers\OfficeDashboardController;
+use App\Http\Controllers\OfficeProfileController;
 use App\Http\Controllers\OrcamentoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PessoaController;
@@ -83,6 +87,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Dashboard
         Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);
 
+        // Office profile
+        Route::get('/office/profile', [OfficeProfileController::class, 'show']);
+        Route::put('/office/profile', [OfficeProfileController::class, 'update']);
+
         // Routes that require a company context (X-Company-Id header)
         Route::middleware(ResolveTenant::class)->group(function () {
             // Dashboard per company
@@ -97,6 +105,27 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('orcamentos', OrcamentoController::class);
             Route::post('orcamentos/{orcamento}/converter', [OrcamentoController::class, 'convertToPedido']);
             Route::apiResource('pedidos', PedidoController::class);
+
+            // Fiscal
+            Route::apiResource('notas-fiscais', NotaFiscalController::class);
+            Route::post('notas-fiscais/{notaFiscal}/sign', [NotaFiscalController::class, 'sign']);
+            Route::post('notas-fiscais/{notaFiscal}/transmit', [NotaFiscalController::class, 'transmit']);
+            Route::post('notas-fiscais/{notaFiscal}/cancel', [NotaFiscalController::class, 'cancel']);
+            Route::post('notas-fiscais/{notaFiscal}/carta-correcao', [NotaFiscalController::class, 'cartaCorrecao']);
+            Route::get('notas-fiscais/{notaFiscal}/xml', [NotaFiscalController::class, 'getXml']);
+
+            Route::apiResource('ctes', CteController::class);
+            Route::post('ctes/{cte}/sign', [CteController::class, 'sign']);
+            Route::post('ctes/{cte}/transmit', [CteController::class, 'transmit']);
+            Route::post('ctes/{cte}/cancel', [CteController::class, 'cancel']);
+            Route::get('ctes/{cte}/xml', [CteController::class, 'getXml']);
+
+            Route::apiResource('mdfes', MdfeController::class);
+            Route::post('mdfes/{mdfe}/sign', [MdfeController::class, 'sign']);
+            Route::post('mdfes/{mdfe}/transmit', [MdfeController::class, 'transmit']);
+            Route::post('mdfes/{mdfe}/cancel', [MdfeController::class, 'cancel']);
+            Route::post('mdfes/{mdfe}/encerrar', [MdfeController::class, 'encerrar']);
+            Route::get('mdfes/{mdfe}/xml', [MdfeController::class, 'getXml']);
         });
     });
 

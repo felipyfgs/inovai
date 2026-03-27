@@ -9,7 +9,7 @@ const emit = defineEmits<{ updated: [] }>()
 const open = defineModel<boolean>('open', { default: false })
 const loading = ref(false)
 const toast = useToast()
-const { put } = useApiMutation()
+const { put, post } = useApiMutation()
 
 const { data: plansData } = useApi<Plan[]>('/admin/plans')
 const plans = computed(() => (plansData.value ?? []).filter((p: Plan) => p.is_active))
@@ -71,7 +71,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     const { plan_id, ...data } = event.data
     await put(`/admin/offices/${props.office.id}`, data)
     if (plan_id && plan_id !== props.office.subscription?.plan_id) {
-      await put(`/admin/offices/${props.office.id}/assign-plan`, { plan_id })
+      await post(`/admin/offices/${props.office.id}/assign-plan`, { plan_id })
     }
     toast.add({ title: 'Atualizado com sucesso', color: 'success' })
     open.value = false
