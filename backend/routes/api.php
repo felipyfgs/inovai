@@ -11,7 +11,9 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\CompanyInvoiceController;
 use App\Http\Controllers\CompanyModuleController;
+use App\Http\Controllers\CompanySubscriptionController;
 use App\Http\Controllers\ContaController;
 use App\Http\Controllers\CteController;
 use App\Http\Controllers\EmitenteController;
@@ -91,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('companies/{company}/users', [CompanyController::class, 'users']);
         Route::post('companies/{company}/users', [CompanyController::class, 'attachUser']);
         Route::delete('companies/{company}/users/{user}', [CompanyController::class, 'detachUser']);
+        Route::put('companies/{company}/users/{user}/reset-password', [CompanyController::class, 'resetUserPassword']);
         Route::put('companies/{company}/owner', [CompanyController::class, 'updateOwner']);
 
         // Company modules
@@ -100,8 +103,21 @@ Route::middleware('auth:sanctum')->group(function () {
         // Office plans
         Route::apiResource('office-plans', OfficePlanController::class);
 
+        // Company subscriptions (office manages its companies)
+        Route::get('/company-subscriptions', [CompanySubscriptionController::class, 'index']);
+        Route::post('/companies/{company}/assign-plan', [CompanySubscriptionController::class, 'assignPlan']);
+        Route::delete('/companies/{company}/subscription', [CompanySubscriptionController::class, 'cancel']);
+
+        // Company invoices (billing)
+        Route::get('/company-invoices/dashboard', [CompanyInvoiceController::class, 'dashboard']);
+        Route::get('/company-invoices/chart', [CompanyInvoiceController::class, 'chart']);
+        Route::get('/company-invoices/plans-chart', [CompanyInvoiceController::class, 'plansChart']);
+        Route::post('/company-invoices/generate-monthly', [CompanyInvoiceController::class, 'generateMonthly']);
+        Route::apiResource('company-invoices', CompanyInvoiceController::class);
+
         // Dashboard
         Route::get('/dashboard/office', [OfficeDashboardController::class, 'index']);
+        Route::get('/dashboard/office/chart', [OfficeDashboardController::class, 'chart']);
 
         // Office profile
         Route::get('/office/profile', [OfficeProfileController::class, 'show']);
