@@ -72,6 +72,23 @@ class Company extends Model
         return $this->belongsTo(OfficePlan::class);
     }
 
+    public function subscription()
+    {
+        return $this->hasOne(CompanySubscription::class)->ofMany(['id' => 'max'], function ($q) {
+            $q->where('status', 'active');
+        });
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(CompanySubscription::class);
+    }
+
+    public function companyInvoices(): HasMany
+    {
+        return $this->hasMany(CompanyInvoice::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'company_user')->withTimestamps();

@@ -21,6 +21,13 @@ class OfficePlanController extends Controller
         return response()->json($plans);
     }
 
+    public function show(Request $request, OfficePlan $plan): JsonResponse
+    {
+        $this->authorizePlan($request, $plan);
+
+        return response()->json($plan);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

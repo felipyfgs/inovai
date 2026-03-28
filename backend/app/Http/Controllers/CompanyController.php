@@ -64,7 +64,7 @@ class CompanyController extends Controller
             'telefone' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'ambiente' => ['nullable', 'string', 'in:homologacao,producao'],
-            'profile_id' => ['nullable', 'exists:office_plans,id'],
+            'office_plan_id' => ['nullable', 'exists:office_plans,id'],
             'owner_name' => ['required', 'string', 'max:255'],
             'owner_email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'owner_password' => ['required', 'confirmed', Password::defaults()],
@@ -101,14 +101,14 @@ class CompanyController extends Controller
             }
         }
 
-        $officePlanId = $validated['profile_id'] ?? null;
+        $officePlanId = $validated['office_plan_id'] ?? null;
         $ownerName = $validated['owner_name'];
         $ownerEmail = $validated['owner_email'];
         $ownerPassword = $validated['owner_password'];
         $ownerPhone = $validated['owner_phone'] ?? null;
 
         unset(
-            $validated['profile_id'],
+            $validated['office_plan_id'],
             $validated['owner_name'],
             $validated['owner_email'],
             $validated['owner_password'],
@@ -283,6 +283,22 @@ class CompanyController extends Controller
         $company->users()->detach($user->id);
 
         return response()->json(['message' => 'Usuário desvinculado da empresa.']);
+    }
+
+    public function resetUserPassword(Request $request, Company $company, User $user): JsonResponse
+    {
+        $this->authorizeCompany($request, $company);
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => true,
+        ]);
+
+        return response()->json(['message' => 'Senha redefinida com sucesso.']);
     }
 
     public function updateOwner(Request $request, Company $company): JsonResponse

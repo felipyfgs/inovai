@@ -2,14 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OfficePlan extends Model
 {
-    #[Fillable(['office_id', 'name', 'description', 'price', 'max_nfs_month', 'modules', 'is_active', 'is_default'])]
+    protected $fillable = [
+        'office_id',
+        'name',
+        'description',
+        'price',
+        'max_nfs_month',
+        'modules',
+        'is_active',
+        'is_default',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -29,6 +38,16 @@ class OfficePlan extends Model
     public function companies(): HasMany
     {
         return $this->hasMany(Company::class);
+    }
+
+    public function companySubscriptions(): HasMany
+    {
+        return $this->hasMany(CompanySubscription::class);
+    }
+
+    public function companyInvoices(): HasMany
+    {
+        return $this->hasMany(CompanyInvoice::class);
     }
 
     public function scopeActive($query)

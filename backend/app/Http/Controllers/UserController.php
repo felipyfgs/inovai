@@ -19,16 +19,10 @@ class UserController extends Controller
         $user = $request->user();
         $query = User::with(['office', 'roles', 'companies']);
 
-        if ($user->hasRole('admin')) {
-            // Admin sees all users
-            if ($request->filled('office_id')) {
-                $query->where('office_id', $request->office_id);
-            }
-        } elseif ($user->hasAnyRole(['office_user', 'accountant'])) {
-            // Office user sees only users from their office
-            $query->where('office_id', $user->office_id);
+        if ($user->hasAnyRole(['office_user', 'accountant'])) {
+            $query->where('office_id', $user->office_id)
+                ->whereHas('roles', fn ($q) => $q->whereIn('name', ['accountant', 'office_user']));
         } else {
-            // Company users cannot list users
             return response()->json(['message' => 'Acesso negado.'], 403);
         }
 
@@ -61,14 +55,12 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['nullable', 'boolean'],
+            'role' => ['required', 'string', 'in:accountant,company_user'],
         ];
 
         if ($currentUser->hasRole('admin')) {
             $rules['office_id'] = ['required', 'exists:offices,id'];
             $rules['role'] = ['required', 'string', 'in:admin,office_user,accountant,company_user'];
-        } else {
-            // office_user can only create company_user in their own office
-            $rules['role'] = ['required', 'string', 'in:company_user'];
         }
 
         $validated = $request->validate($rules);
@@ -124,20 +116,9 @@ class UserController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ];
 
-        // Only admin can change role and office
-        if ($currentUser->hasRole('admin')) {
-            $rules['office_id'] = ['sometimes', 'exists:offices,id'];
-            $rules['role'] = ['sometimes', 'string', 'in:admin,office_user,accountant,company_user'];
-        }
-
         $validated = $request->validate($rules);
 
         $user->update($validated);
-
-        // Update role if provided (admin only)
-        if ($currentUser->hasRole('admin') && isset($validated['role'])) {
-            $user->syncRoles([$validated['role']]);
-        }
 
         return response()->json($user->load(['office', 'roles', 'companies']));
     }
@@ -165,12 +146,8 @@ class UserController extends Controller
     {
         $currentUser = $request->user();
 
-        // Platform admin can toggle any user
-        if (! $currentUser->hasRole('admin')) {
-            // Office user can only toggle users in their office
-            if ($user->office_id !== $currentUser->office_id) {
-                return response()->json(['message' => 'Sem permissão para alterar este usuário.'], 403);
-            }
+        if ($user->office_id !== $currentUser->office_id) {
+            return response()->json(['message' => 'Sem permissão para alterar este usuário.'], 403);
         }
 
         if ($user->id === $currentUser->id) {
@@ -276,10 +253,6 @@ class UserController extends Controller
     {
         $currentUser = $request->user();
 
-        if ($currentUser->hasRole('admin')) {
-            return;
-        }
-
         if ($currentUser->hasAnyRole(['office_user', 'accountant'])) {
             if ($user->office_id !== $currentUser->office_id) {
                 abort(403, 'Sem permissão para acessar este usuário.');
@@ -288,7 +261,6 @@ class UserController extends Controller
             return;
         }
 
-        // company_user cannot manage users
         abort(403, 'Acesso negado.');
     }
 
@@ -297,11 +269,6 @@ class UserController extends Controller
      */
     private function authorizeCompanies(User $user, array $companyIds): void
     {
-        if ($user->hasRole('admin')) {
-            return;
-        }
-
-        // office_user can only attach companies from their office
         $allowedCount = Company::whereIn('id', $companyIds)
             ->where('office_id', $user->office_id)
             ->count();
