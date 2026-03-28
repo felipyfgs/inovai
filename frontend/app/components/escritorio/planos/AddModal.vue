@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { OfficePlan } from '~/types'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import * as z from 'zod'
 
-const emit = defineEmits<{ created: [], updated: [] }>()
+const emit = defineEmits<{ created: [] }>()
 
 const schema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -18,10 +17,8 @@ type Schema = z.output<typeof schema>
 
 const open = ref(false)
 const loading = ref(false)
-const editingPlan = ref<OfficePlan | null>(null)
-const toast = useToast()
-const { post, put } = useApiMutation()
-const formRef = useTemplateRef('formRef')
+const { post } = useApiMutation()
+const { extractMessage } = useApiError()
 
 const moduleOptions = [
   { label: 'NF-e', value: 'nfe' },
@@ -45,57 +42,15 @@ const state = reactive<Partial<Schema>>({
   is_default: false
 })
 
-function resetForm() {
-  Object.assign(state, {
-    name: '',
-    description: '',
-    price: 0,
-    max_nfs_month: null,
-    modules: ['nfe', 'nfce'],
-    is_default: false
-  })
-}
-
-function openFor(plan: OfficePlan) {
-  editingPlan.value = plan
-  Object.assign(state, {
-    name: plan.name,
-    description: plan.description || '',
-    price: plan.price,
-    max_nfs_month: plan.max_nfs_month ?? null,
-    modules: plan.modules,
-    is_default: plan.is_default
-  })
-  open.value = true
-}
-
-function close() {
-  open.value = false
-  editingPlan.value = null
-  resetForm()
-}
-
-defineExpose({ openFor, close })
-
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
-    if (editingPlan.value) {
-      await put(`/office-plans/${editingPlan.value.id}`, event.data)
-      toast.add({ title: 'Plano atualizado', description: event.data.name, color: 'success' })
-    } else {
-      await post('/office-plans', event.data)
-      toast.add({ title: 'Plano criado', description: event.data.name, color: 'success' })
-    }
-    close()
-    if (editingPlan.value) {
-      emit('updated')
-    } else {
-      emit('created')
-    }
+    await post('/office-plans', event.data)
+    useAppToast().success('Plano criado com sucesso')
+    open.value = false
+    emit('created')
   } catch (error: unknown) {
-    const err = error as { response?: { _data?: { message?: string } }, message?: string }
-    toast.add({ title: 'Erro', description: err?.response?._data?.message || err?.message || 'Erro ao salvar plano.', color: 'error' })
+    useAppToast().error(extractMessage(error))
   } finally {
     loading.value = false
   }
@@ -112,25 +67,14 @@ function toggleModule(modValue: string) {
 </script>
 
 <template>
-  <UModal
-    v-model:open="open"
-    :title="editingPlan ? 'Editar Plano' : 'Novo Plano'"
-    :ui="{ content: 'sm:max-w-lg', body: 'max-h-[75vh] overflow-y-auto', footer: 'justify-end shrink-0' }"
-  >
-    <slot :open="() => { resetForm(); open = true }">
-      <UButton
-        label="Novo Plano"
-        icon="i-lucide-plus"
-        size="xs"
-      />
-    </slot>
+  <UModal v-model:open="open" title="Novo Plano" description="Configure os módulos e limites do novo plano.">
+    <UButton label="Novo Plano" icon="i-lucide-plus" />
 
     <template #body>
       <UForm
-        ref="formRef"
         :schema="schema"
         :state="state"
-        class="space-y-4 p-1"
+        class="space-y-4"
         @submit="onSubmit"
       >
         <UFormField label="Nome do Plano" name="name" required>
@@ -191,22 +135,23 @@ function toggleModule(modValue: string) {
             description="Este será o plano selecionado por padrão ao criar uma empresa"
           />
         </UFormField>
-      </UForm>
-    </template>
 
-    <template #footer="{ close: closeModal }">
-      <UButton
-        label="Cancelar"
-        color="neutral"
-        variant="outline"
-        @click="closeModal"
-      />
-      <UButton
-        :label="editingPlan ? 'Salvar' : 'Criar Plano'"
-        color="primary"
-        :loading="loading"
-        @click="formRef?.submit()"
-      />
+        <div class="flex justify-end gap-2">
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="subtle"
+            @click="open = false"
+          />
+          <UButton
+            label="Criar Plano"
+            color="primary"
+            variant="solid"
+            type="submit"
+            :loading="loading"
+          />
+        </div>
+      </UForm>
     </template>
   </UModal>
 </template>
