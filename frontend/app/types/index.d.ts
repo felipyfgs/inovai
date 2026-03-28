@@ -219,6 +219,8 @@ export interface Company {
   is_active: boolean
   office_plan_id?: number | null
   modules?: CompanyModule[]
+  subscription?: CompanySubscription | null
+  office_plan?: OfficePlan | null
 }
 
 export interface CompanyModule {
@@ -238,6 +240,42 @@ export interface OfficePlan {
   modules: string[]
   is_active: boolean
   is_default: boolean
+}
+
+export interface CompanySubscription {
+  id: number
+  company_id: number
+  office_plan_id: number
+  status: 'active' | 'cancelled' | 'expired'
+  starts_at: string
+  ends_at: string | null
+  office_plan?: OfficePlan
+}
+
+export interface CompanyInvoiceItem {
+  id: number
+  company_invoice_id: number
+  description: string
+  quantity: number
+  unit_price: number
+  total: number
+}
+
+export interface CompanyInvoice {
+  id: number
+  company_id: number
+  office_plan_id: number | null
+  status: 'pending' | 'paid' | 'cancelled' | 'overdue'
+  amount: number
+  reference: string | null
+  notes: string | null
+  due_at: string
+  paid_at: string | null
+  company?: Company
+  office_plan?: OfficePlan
+  items?: CompanyInvoiceItem[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface AvailableModule {

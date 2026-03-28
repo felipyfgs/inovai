@@ -7,9 +7,11 @@ const { getStoredCompanyId, setCompany } = useCurrentCompany()
 const { setOffice } = useCurrentOffice()
 const { $sanctumClient } = useNuxtApp()
 
-watch(() => user.value?.office, (office) => {
-  if (office) {
-    setOffice(office)
+watch(() => user.value, (user) => {
+  if (!user) return
+  const isAdmin = user.roles?.some(r => r.name === 'admin') ?? false
+  if (!isAdmin && user.office) {
+    setOffice(user.office)
   }
 }, { immediate: true })
 
@@ -60,7 +62,7 @@ useSeoMeta({
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :page-key="route => route.fullPath" />
     </NuxtLayout>
   </UApp>
 </template>

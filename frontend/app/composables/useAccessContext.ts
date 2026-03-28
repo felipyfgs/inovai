@@ -1,6 +1,6 @@
 import type { AuthUser } from '~/types'
 
-type Module = 'admin-dashboard' | 'admin-escritorios' | 'admin-planos' | 'admin-cobrancas' | 'admin-admins' | 'dashboard-office' | 'empresas' | 'usuarios' | 'inicio' | 'cadastros' | 'comercial' | 'fiscal' | 'financeiro' | 'estoque' | 'restaurante' | 'config'
+type Module = 'admin-dashboard' | 'admin-escritorios' | 'admin-planos' | 'admin-cobrancas' | 'admin-admins' | 'dashboard-office' | 'empresas' | 'inicio' | 'cadastros' | 'comercial' | 'fiscal' | 'financeiro' | 'estoque' | 'restaurante' | 'config'
 
 type EffectiveRole = 'platform_admin' | 'accountant' | 'company_user'
 
@@ -43,29 +43,30 @@ export function useAccessContext() {
 
   const roleModules: Record<EffectiveRole, Module[]> = {
     platform_admin: ['admin-dashboard', 'admin-escritorios', 'admin-planos', 'admin-cobrancas', 'admin-admins', 'config'],
-    accountant: ['inicio', 'dashboard-office', 'empresas', 'usuarios', 'cadastros', 'comercial', 'fiscal', 'financeiro', 'estoque', 'restaurante', 'config'],
+    accountant: ['dashboard-office', 'empresas', 'config'],
     company_user: ['inicio', 'cadastros', 'comercial', 'fiscal', 'financeiro', 'estoque', 'restaurante', 'config']
   }
+
+  const companyModules: Module[] = ['inicio', 'cadastros', 'comercial', 'fiscal', 'financeiro', 'estoque', 'restaurante']
 
   const modules = computed<Module[]>(() => {
     const roleBased = roleModules[effectiveRole.value]
 
-    if (!currentCompany.value || !modulesLoaded.value) {
-      return roleBased
+    if (currentCompany.value && modulesLoaded.value) {
+      const extra = companyModules.filter((mod) => {
+        const feature = moduleToFeature[mod]
+        if (feature) {
+          return activeModules.value.includes(feature)
+        }
+        if (mod === 'fiscal') {
+          return Object.keys(fiscalFeatures).some(f => activeModules.value.includes(f))
+        }
+        return true
+      })
+      return [...roleBased, ...extra]
     }
 
-    return roleBased.filter((mod) => {
-      const feature = moduleToFeature[mod]
-      if (feature) {
-        return activeModules.value.includes(feature)
-      }
-
-      if (mod === 'fiscal') {
-        return Object.keys(fiscalFeatures).some(f => activeModules.value.includes(f))
-      }
-
-      return true
-    })
+    return roleBased
   })
 
   const canSee = (mod: Module): boolean => modules.value.includes(mod)

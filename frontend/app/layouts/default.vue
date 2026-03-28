@@ -14,7 +14,7 @@ const { data: companiesData } = useApi<PaginatedResponse<Company>>('/companies',
 
 watch(() => companiesData.value?.data, (list) => {
   if (list && list.length > 0) {
-    initializeFromCompanies(list, false)
+    initializeFromCompanies(list)
   }
 }, { immediate: true })
 
@@ -140,35 +140,45 @@ const companyLinks = computed(() => [{
     open.value = false
   }
 }, {
-  label: 'Escritório',
+  label: 'Início',
   icon: 'i-lucide-building',
-  type: 'trigger' as const,
+  to: '/escritorio',
   module: 'dashboard-office',
-  children: [{
-    label: 'Início',
-    to: '/escritorio',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Planos',
-    to: '/escritorio/planos',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Equipe',
-    to: '/escritorio/equipe',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Assinatura',
-    to: '/assinatura',
-    onSelect: () => {
-      open.value = false
-    }
-  }]
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Planos',
+  icon: 'i-lucide-package',
+  to: '/escritorio/planos',
+  module: 'dashboard-office',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Equipe',
+  icon: 'i-lucide-users',
+  to: '/escritorio/equipe',
+  module: 'dashboard-office',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Assinaturas',
+  icon: 'i-lucide-credit-card',
+  to: '/escritorio/assinaturas',
+  module: 'dashboard-office',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Cobranças',
+  icon: 'i-lucide-receipt',
+  to: '/escritorio/cobrancas',
+  module: 'dashboard-office',
+  onSelect: () => {
+    open.value = false
+  }
 }, {
   label: 'Empresas',
   icon: 'i-lucide-building-2',
@@ -178,20 +188,12 @@ const companyLinks = computed(() => [{
     open.value = false
   }
 }, {
-  label: 'Usuários',
-  icon: 'i-lucide-users',
-  to: '/usuarios',
-  module: 'usuarios',
-  onSelect: () => {
-    open.value = false
-  }
-}])
-
-const configLink = {
   label: 'Configurações',
   icon: 'i-lucide-settings',
+  to: '/settings',
   module: 'config',
   type: 'trigger' as const,
+  defaultOpen: true,
   children: [{
     label: 'Geral',
     to: '/settings',
@@ -199,15 +201,9 @@ const configLink = {
     onSelect: () => {
       open.value = false
     }
-  } as NavigationMenuItem, {
+  }, {
     label: 'Emitente',
     to: '/configuracoes/emitente',
-    onSelect: () => {
-      open.value = false
-    }
-  }, {
-    label: 'Integrações',
-    to: '/settings/integrations',
     onSelect: () => {
       open.value = false
     }
@@ -218,7 +214,7 @@ const configLink = {
       open.value = false
     }
   }]
-}
+}])
 
 const adminLinks = [{
   label: 'Dashboard',
@@ -254,13 +250,24 @@ const adminLinks = [{
     open.value = false
   }
 }, {
-  label: 'Administradores',
-  icon: 'i-lucide-shield',
-  to: '/admin/admins',
-  module: 'admin-admins',
-  onSelect: () => {
-    open.value = false
-  }
+  label: 'Configurações',
+  icon: 'i-lucide-settings',
+  module: 'config',
+  type: 'trigger' as const,
+  children: [{
+    label: 'Geral',
+    to: '/settings',
+    exact: true,
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
+    label: 'Segurança',
+    to: '/settings/security',
+    onSelect: () => {
+      open.value = false
+    }
+  }]
 }]
 
 const bottomLinks = [{
@@ -275,9 +282,9 @@ const bottomLinks = [{
 
 const allLinks = computed<(NavigationMenuItem & { module?: string })[]>(() => {
   if (isPlatformAdmin.value) {
-    return [...adminLinks, configLink]
+    return [...adminLinks]
   }
-  return [...companyLinks.value, configLink]
+  return [...companyLinks.value]
 })
 
 const links = computed<NavigationMenuItem[][]>(() => [

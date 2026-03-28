@@ -65,7 +65,8 @@ export default defineNuxtConfig({
       header: 'X-XSRF-TOKEN'
     },
     client: {
-      retry: false
+      retry: false,
+      initialRequest: true
     },
     redirect: {
       keepRequestedRoute: true,

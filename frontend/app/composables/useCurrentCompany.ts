@@ -21,7 +21,7 @@ export function useCurrentCompany() {
     return id ? Number(id) : null
   }
 
-  const initializeFromCompanies = (companies: Company[], isAdmin: boolean = false) => {
+  const initializeFromCompanies = (companies: Company[]) => {
     if (initialized.value || companies.length === 0) return
 
     const storedId = getStoredCompanyId()
@@ -29,18 +29,7 @@ export function useCurrentCompany() {
 
     if (storedCompany) {
       currentCompany.value = storedCompany
-    } else if (!isAdmin) {
-      // Non-admin users: select first company as default
-      const firstCompany = companies[0]
-      if (firstCompany) {
-        currentCompany.value = firstCompany
-        if (import.meta.client) {
-          localStorage.setItem('current_company_id', String(firstCompany.id))
-        }
-      }
     }
-    // Admin users: stay without company if nothing stored
-
     initialized.value = true
   }
 
