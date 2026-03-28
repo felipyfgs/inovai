@@ -16,9 +16,19 @@ const { data: modulesData, status, refresh } = useApi<AvailableModule[]>(`/compa
   lazy: true
 })
 
-const { data: planData } = useApi<OfficePlan>(`/office-plans/${props.company.office_plan_id}`, {
-  lazy: true,
-  watch: [open]
+const planData = ref<OfficePlan | null>(null)
+
+watchEffect(async () => {
+  if (!open.value || !props.company.office_plan_id) {
+    planData.value = null
+    return
+  }
+  try {
+    const { $sanctumClient } = useNuxtApp()
+    planData.value = await $sanctumClient<OfficePlan>(`/api/office-plans/${props.company.office_plan_id}`)
+  } catch {
+    planData.value = null
+  }
 })
 
 const selectedModules = computed({
@@ -68,7 +78,12 @@ watch(open, (val) => {
 <template>
   <slot :open="() => open = true" />
 
-  <UModal v-model:open="open" title="Gerenciar Módulos" :ui="{ content: 'sm:max-w-lg' }">
+  <UModal
+    v-model:open="open"
+    title="Gerenciar Módulos"
+    :description="`Módulos de ${company.fantasia || company.razao_social}`"
+    :ui="{ content: 'sm:max-w-lg' }"
+  >
     <template #body>
       <div class="space-y-3">
         <p class="text-sm text-muted mb-4">
