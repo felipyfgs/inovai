@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import type { BreadcrumbItem, FormSubmitEvent } from '@nuxt/ui'
+import type { FormSubmitEvent, StepperItem } from '@nuxt/ui'
 import type { Company, OfficePlan } from '~/types'
 
 import { UButton } from '#components'
@@ -10,8 +10,10 @@ const toast = useToast()
 const { post } = useApiMutation()
 const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
+const stepperRef = useTemplateRef('stepperRef')
 
 const loading = ref(false)
+const currentStep = ref('empresa')
 
 const schema = z.object({
   razao_social: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -73,6 +75,19 @@ const state = reactive<Partial<Schema>>({
 const { search: searchCnpj, loading: cnpjLoading, error: cnpjError } = useCnpjSearch()
 const { search: searchCep, loading: cepLoading, error: cepError } = useCepSearch()
 
+const allModules: Record<string, string> = {
+  nfe: 'NF-e',
+  nfce: 'NFC-e',
+  cte: 'CT-e',
+  mdfe: 'MDF-e',
+  nfse: 'NFS-e',
+  orcamento: 'Orçamentos',
+  estoque: 'Estoque',
+  financeiro: 'Financeiro',
+  restaurante: 'Restaurante',
+  relatorios: 'Relatórios'
+}
+
 const { data: plansData } = useApi<OfficePlan[]>('/office-plans', { lazy: true })
 const plans = computed(() => plansData.value || [])
 const planItems = computed(() => plans.value.map(p => ({
@@ -81,6 +96,13 @@ const planItems = computed(() => plans.value.map(p => ({
   description: p.description || undefined
 })))
 const selectedPlan = computed(() => plans.value.find(p => p.id === state.office_plan_id))
+
+watch(plans, (val) => {
+  if (val.length && !state.office_plan_id) {
+    const defaultPlan = val.find(p => p.is_default)
+    if (defaultPlan) state.office_plan_id = defaultPlan.id
+  }
+}, { immediate: true })
 
 const ufItems = [
   { label: 'AC', value: 'AC' }, { label: 'AL', value: 'AL' }, { label: 'AP', value: 'AP' },
@@ -94,10 +116,11 @@ const ufItems = [
   { label: 'SP', value: 'SP' }, { label: 'SE', value: 'SE' }, { label: 'TO', value: 'TO' }
 ]
 
-const breadcrumbs: BreadcrumbItem[] = [
-  { label: 'Empresas', icon: 'i-lucide-building', to: '/empresas' },
-  { label: 'Nova Empresa' }
-]
+const steps = computed<StepperItem[]>(() => [
+  { title: 'Empresa', description: 'Dados cadastrais e plano', icon: 'i-lucide-building', value: 'empresa' },
+  { title: 'Endereço e Contato', description: 'Localização e comunicação', icon: 'i-lucide-map-pin', value: 'endereco-contato' },
+  { title: 'Proprietário', description: 'Acesso do responsável', icon: 'i-lucide-user', value: 'proprietario' }
+])
 
 async function handleSearchCnpj() {
   const cleanCnpj = state.cnpj?.replace(/\D/g, '') || ''
@@ -146,6 +169,14 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   }
 }
 
+function handleNext() {
+  stepperRef.value?.next()
+}
+
+function handlePrev() {
+  stepperRef.value?.prev()
+}
+
 function handleSubmit() {
   formRef.value?.submit()
 }
@@ -160,254 +191,269 @@ function handleSubmit() {
         </template>
 
         <template #right>
-          <UBreadcrumb :items="breadcrumbs" />
-        </template>
-      </UDashboardNavbar>
-
-      <UDashboardToolbar>
-        <div />
-
-        <template #right>
           <UButton
             label="Cancelar"
             color="neutral"
             variant="outline"
             @click="router.push('/empresas')"
           />
-          <UButton
-            label="Criar Empresa"
-            color="primary"
-            :loading="loading"
-            @click="handleSubmit"
-          />
         </template>
+      </UDashboardNavbar>
+
+      <UDashboardToolbar>
+        <div />
       </UDashboardToolbar>
     </template>
 
     <template #body>
-      <UForm
-        ref="formRef"
-        :schema="schema"
-        :state="state"
-        class="space-y-6"
-        @submit="onSubmit"
-      >
-        <UCard>
-          <template #header>
-            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-building text-muted" />
-              Dados da Empresa
-            </h3>
-          </template>
+      <div class="space-y-6">
+        <UStepper
+          ref="stepperRef"
+          v-model="currentStep"
+          :items="steps"
+          disabled
+          class="w-full"
+        />
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField
-              label="CNPJ"
-              name="cnpj"
-              required
-              class="sm:col-span-2"
-            >
-              <UInput v-model="state.cnpj" placeholder="00.000.000/0001-00" class="w-full">
-                <template #trailing>
-                  <UButton
-                    v-if="!cnpjLoading"
-                    variant="link"
-                    icon="i-lucide-search"
-                    color="neutral"
+        <UForm
+          ref="formRef"
+          :schema="schema"
+          :state="state"
+          @submit="onSubmit"
+        >
+          <UCard v-if="currentStep === 'empresa'">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <UFormField
+                label="CNPJ"
+                name="cnpj"
+                required
+                class="sm:col-span-2"
+              >
+                <UInput v-model="state.cnpj" placeholder="00.000.000/0001-00" class="w-full">
+                  <template #trailing>
+                    <UButton
+                      v-if="!cnpjLoading"
+                      variant="link"
+                      icon="i-lucide-search"
+                      color="neutral"
+                      size="xs"
+                      @click="handleSearchCnpj"
+                    />
+                    <UIcon v-else name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
+                  </template>
+                </UInput>
+              </UFormField>
+
+              <UFormField
+                label="Razão Social"
+                name="razao_social"
+                required
+                class="sm:col-span-2"
+              >
+                <UInput v-model="state.razao_social" placeholder="Nome empresarial" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Nome Fantasia" name="fantasia">
+                <UInput v-model="state.fantasia" placeholder="Nome comercial" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Inscrição Estadual" name="ie">
+                <UInput v-model="state.ie" placeholder="IE" class="w-full" />
+              </UFormField>
+              <UFormField label="Inscrição Municipal" name="im">
+                <UInput v-model="state.im" placeholder="IM" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Regime Tributário" name="crt">
+                <USelect
+                  v-model="state.crt"
+                  class="w-full"
+                  :items="[
+                    { label: 'Simples Nacional', value: 1 },
+                    { label: 'Simples Nacional (excesso)', value: 2 },
+                    { label: 'Regime Normal', value: 3 }
+                  ]"
+                  placeholder="Selecione o regime"
+                />
+              </UFormField>
+              <UFormField label="Ambiente de Emissão" name="ambiente">
+                <USelect
+                  v-model="state.ambiente"
+                  class="w-full"
+                  :items="[
+                    { label: 'Homologação', value: 'homologacao' },
+                    { label: 'Produção', value: 'producao' }
+                  ]"
+                  placeholder="Selecione o ambiente"
+                />
+              </UFormField>
+
+              <UFormField label="Plano de Serviço" name="office_plan_id" class="sm:col-span-2">
+                <USelect
+                  v-model="state.office_plan_id"
+                  :items="planItems"
+                  placeholder="Selecione um plano (opcional)"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <div v-if="selectedPlan" class="sm:col-span-2">
+                <p class="text-xs text-muted mb-1.5">
+                  Módulos inclusos no plano:
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  <UBadge
+                    v-for="mod in selectedPlan.modules"
+                    :key="mod"
+                    variant="subtle"
                     size="xs"
-                    @click="handleSearchCnpj"
-                  />
-                  <UIcon v-else name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
-                </template>
-              </UInput>
-            </UFormField>
-
-            <UFormField
-              label="Razão Social"
-              name="razao_social"
-              required
-              class="sm:col-span-2"
-            >
-              <UInput v-model="state.razao_social" placeholder="Nome empresarial" class="w-full" />
-            </UFormField>
-
-            <UFormField label="Nome Fantasia" name="fantasia">
-              <UInput v-model="state.fantasia" placeholder="Nome comercial" class="w-full" />
-            </UFormField>
-
-            <UFormField label="Inscrição Estadual" name="ie">
-              <UInput v-model="state.ie" placeholder="IE" class="w-full" />
-            </UFormField>
-            <UFormField label="Inscrição Municipal" name="im">
-              <UInput v-model="state.im" placeholder="IM" class="w-full" />
-            </UFormField>
-
-            <UFormField label="Regime Tributário" name="crt">
-              <USelect
-                v-model="state.crt"
-                class="w-full"
-                :items="[
-                  { label: 'Simples Nacional', value: 1 },
-                  { label: 'Simples Nacional (excesso)', value: 2 },
-                  { label: 'Regime Normal', value: 3 }
-                ]"
-                placeholder="Selecione o regime"
-              />
-            </UFormField>
-            <UFormField label="Ambiente de Emissão" name="ambiente">
-              <USelect
-                v-model="state.ambiente"
-                class="w-full"
-                :items="[
-                  { label: 'Homologação', value: 'homologacao' },
-                  { label: 'Produção', value: 'producao' }
-                ]"
-                placeholder="Selecione o ambiente"
-              />
-            </UFormField>
-
-            <UFormField label="Plano de Serviço" name="office_plan_id" class="sm:col-span-2">
-              <USelect
-                v-model="state.office_plan_id"
-                :items="planItems"
-                placeholder="Selecione um plano (opcional)"
-                class="w-full"
-              />
-            </UFormField>
-
-            <div v-if="selectedPlan" class="sm:col-span-2">
-              <p class="text-xs text-muted mb-1.5">
-                Módulos inclusos no plano:
-              </p>
-              <div class="flex flex-wrap gap-1.5">
-                <UBadge
-                  v-for="mod in selectedPlan.modules"
-                  :key="mod"
-                  variant="subtle"
-                  size="xs"
-                  color="primary"
-                >
-                  {{ mod }}
-                </UBadge>
+                    color="primary"
+                  >
+                    {{ allModules[mod] || mod }}
+                  </UBadge>
+                </div>
               </div>
             </div>
-          </div>
-        </UCard>
 
-        <UCard>
-          <template #header>
-            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-map-pin text-muted" />
-              Endereço
-            </h3>
-          </template>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <UFormField label="CEP" name="cep" class="sm:col-span-1">
-              <UInput
-                v-model="state.cep"
-                placeholder="00000-000"
-                class="w-full"
-                @blur="handleSearchCep"
-              >
-                <template #trailing>
-                  <UIcon v-if="cepLoading" name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
-                </template>
-              </UInput>
-            </UFormField>
-            <UFormField label="UF" name="uf" class="sm:col-span-1">
-              <USelect
-                v-model="state.uf"
-                :items="ufItems"
-                placeholder="UF"
-                class="w-full"
+            <div class="flex justify-end mt-6">
+              <UButton
+                label="Próximo"
+                icon="i-lucide-arrow-right"
+                color="primary"
+                @click="handleNext"
               />
-            </UFormField>
-            <UFormField label="Município" name="municipio" class="col-span-2">
-              <UInput v-model="state.municipio" placeholder="Cidade" class="w-full" />
-            </UFormField>
+            </div>
+          </UCard>
 
-            <UFormField label="Logradouro" name="logradouro" class="col-span-2 sm:col-span-3">
-              <UInput v-model="state.logradouro" placeholder="Rua, Avenida, etc." class="w-full" />
-            </UFormField>
-            <UFormField label="Número" name="numero">
-              <UInput v-model="state.numero" placeholder="Nº" class="w-full" />
-            </UFormField>
+          <UCard v-else-if="currentStep === 'endereco-contato'">
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <UFormField label="CEP" name="cep" class="sm:col-span-1">
+                  <UInput
+                    v-model="state.cep"
+                    placeholder="00000-000"
+                    class="w-full"
+                    @blur="handleSearchCep"
+                  >
+                    <template #trailing>
+                      <UIcon v-if="cepLoading" name="i-lucide-loader-2" class="animate-spin text-muted size-4" />
+                    </template>
+                  </UInput>
+                </UFormField>
+                <UFormField label="UF" name="uf" class="sm:col-span-1">
+                  <USelect
+                    v-model="state.uf"
+                    :items="ufItems"
+                    placeholder="UF"
+                    class="w-full"
+                  />
+                </UFormField>
+                <UFormField label="Município" name="municipio" class="col-span-2">
+                  <UInput v-model="state.municipio" placeholder="Cidade" class="w-full" />
+                </UFormField>
 
-            <UFormField label="Bairro" name="bairro" class="col-span-2">
-              <UInput v-model="state.bairro" placeholder="Bairro" class="w-full" />
-            </UFormField>
-            <UFormField label="Complemento" name="complemento" class="col-span-2">
-              <UInput v-model="state.complemento" placeholder="Apto, Sala, Bloco, etc." class="w-full" />
-            </UFormField>
-          </div>
-        </UCard>
+                <UFormField label="Logradouro" name="logradouro" class="col-span-2 sm:col-span-3">
+                  <UInput v-model="state.logradouro" placeholder="Rua, Avenida, etc." class="w-full" />
+                </UFormField>
+                <UFormField label="Número" name="numero">
+                  <UInput v-model="state.numero" placeholder="Nº" class="w-full" />
+                </UFormField>
 
-        <UCard>
-          <template #header>
-            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-phone text-muted" />
-              Contato
-            </h3>
-          </template>
+                <UFormField label="Bairro" name="bairro" class="col-span-2">
+                  <UInput v-model="state.bairro" placeholder="Bairro" class="w-full" />
+                </UFormField>
+                <UFormField label="Complemento" name="complemento" class="col-span-2">
+                  <UInput v-model="state.complemento" placeholder="Apto, Sala, Bloco, etc." class="w-full" />
+                </UFormField>
+              </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField label="Telefone" name="telefone">
-              <UInput v-model="state.telefone" placeholder="(00) 00000-0000" class="w-full" />
-            </UFormField>
-            <UFormField label="E-mail" name="email">
-              <UInput
-                v-model="state.email"
-                type="email"
-                placeholder="email@empresa.com.br"
-                class="w-full"
+              <USeparator />
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <UFormField label="Telefone" name="telefone">
+                  <UInput v-model="state.telefone" placeholder="(00) 00000-0000" class="w-full" />
+                </UFormField>
+                <UFormField label="E-mail" name="email">
+                  <UInput
+                    v-model="state.email"
+                    type="email"
+                    placeholder="email@empresa.com.br"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
+            </div>
+
+            <div class="flex justify-between mt-6">
+              <UButton
+                label="Voltar"
+                icon="i-lucide-arrow-left"
+                color="neutral"
+                variant="outline"
+                @click="handlePrev"
               />
-            </UFormField>
-          </div>
-        </UCard>
+              <UButton
+                label="Próximo"
+                icon="i-lucide-arrow-right"
+                color="primary"
+                @click="handleNext"
+              />
+            </div>
+          </UCard>
 
-        <UCard>
-          <template #header>
-            <h3 class="text-sm font-semibold text-highlighted flex items-center gap-2">
-              <span class="i-lucide-user text-muted" />
-              Acesso do Proprietário
-            </h3>
-          </template>
+          <UCard v-else>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <UFormField label="Nome do Proprietário" name="owner_name" required>
+                <UInput v-model="state.owner_name" placeholder="Nome completo" class="w-full" />
+              </UFormField>
+              <UFormField label="E-mail de Acesso" name="owner_email" required>
+                <UInput
+                  v-model="state.owner_email"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField label="Senha de Acesso" name="owner_password" required>
+                <UInput
+                  v-model="state.owner_password"
+                  type="password"
+                  placeholder="Mínimo 8 caracteres"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField label="Confirmar Senha" name="owner_password_confirmation" required>
+                <UInput
+                  v-model="state.owner_password_confirmation"
+                  type="password"
+                  placeholder="Repita a senha"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField label="Telefone do Proprietário" name="owner_phone" class="sm:col-span-2">
+                <UInput v-model="state.owner_phone" placeholder="(00) 00000-0000" class="w-full" />
+              </UFormField>
+            </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField label="Nome do Proprietário" name="owner_name" required>
-              <UInput v-model="state.owner_name" placeholder="Nome completo" class="w-full" />
-            </UFormField>
-            <UFormField label="E-mail de Acesso" name="owner_email" required>
-              <UInput
-                v-model="state.owner_email"
-                type="email"
-                placeholder="email@exemplo.com"
-                class="w-full"
+            <div class="flex justify-between mt-6">
+              <UButton
+                label="Voltar"
+                icon="i-lucide-arrow-left"
+                color="neutral"
+                variant="outline"
+                @click="handlePrev"
               />
-            </UFormField>
-            <UFormField label="Senha de Acesso" name="owner_password" required>
-              <UInput
-                v-model="state.owner_password"
-                type="password"
-                placeholder="Mínimo 8 caracteres"
-                class="w-full"
+              <UButton
+                label="Criar Empresa"
+                icon="i-lucide-check"
+                color="primary"
+                :loading="loading"
+                @click="handleSubmit"
               />
-            </UFormField>
-            <UFormField label="Confirmar Senha" name="owner_password_confirmation" required>
-              <UInput
-                v-model="state.owner_password_confirmation"
-                type="password"
-                placeholder="Repita a senha"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField label="Telefone do Proprietário" name="owner_phone" class="sm:col-span-2">
-              <UInput v-model="state.owner_phone" placeholder="(00) 00000-0000" class="w-full" />
-            </UFormField>
-          </div>
-        </UCard>
-      </UForm>
+            </div>
+          </UCard>
+        </UForm>
+      </div>
     </template>
   </UDashboardPanel>
 </template>

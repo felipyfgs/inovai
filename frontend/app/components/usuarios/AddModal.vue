@@ -7,8 +7,8 @@ const emit = defineEmits<{ created: [] }>()
 
 const open = ref(false)
 const loading = ref(false)
-const toast = useToast()
 const { post } = useApiMutation()
+const { extractMessage } = useApiError()
 const formRef = useTemplateRef('formRef')
 
 const schema = z.object({
@@ -33,22 +33,20 @@ const state = reactive<Partial<Schema>>({
 })
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (!props.officeId) return
   loading.value = true
   try {
     await post('/users', {
       ...event.data,
       role: 'accountant',
-      office_id: props.officeId,
+      ...(props.officeId ? { office_id: props.officeId } : {}),
       is_active: true
     })
-    toast.add({ title: 'Usuário criado com sucesso', color: 'success' })
+    useAppToast().success('Usuário criado com sucesso')
     open.value = false
     emit('created')
     Object.assign(state, { name: '', email: '', password: '', password_confirmation: '', phone: '' })
   } catch (e: unknown) {
-    const err = e as { response?: { _data?: { message?: string } } }
-    toast.add({ title: 'Erro', description: err?.response?._data?.message || 'Erro ao criar usuário.', color: 'error' })
+    useAppToast().error(extractMessage(e))
   } finally {
     loading.value = false
   }
