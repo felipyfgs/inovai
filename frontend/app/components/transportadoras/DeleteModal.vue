@@ -4,7 +4,7 @@ import type { Transportadora } from '~/types'
 const props = defineProps<{ transportadora: Transportadora }>()
 const emit = defineEmits<{ deleted: [] }>()
 
-const open = ref(false)
+const open = ref(true)
 const loading = ref(false)
 const toast = useToast()
 const { del } = useApiMutation()

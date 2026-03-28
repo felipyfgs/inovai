@@ -4,7 +4,7 @@ import type { Pessoa } from '~/types'
 const props = defineProps<{ pessoa: Pessoa }>()
 const emit = defineEmits<{ deleted: [] }>()
 
-const open = ref(false)
+const open = ref(true)
 const loading = ref(false)
 const toast = useToast()
 const { del } = useApiMutation()

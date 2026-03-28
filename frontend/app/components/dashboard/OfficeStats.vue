@@ -118,7 +118,7 @@ const alerts = computed(() => {
         <UButton
           label="Gerenciar Usuários"
           icon="i-lucide-users"
-          to="/usuarios"
+          to="/escritorio/equipe"
           variant="outline"
           color="neutral"
           block

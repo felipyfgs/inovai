@@ -4,7 +4,7 @@ import type { Produto } from '~/types'
 const props = defineProps<{ produto: Produto }>()
 const emit = defineEmits<{ deleted: [] }>()
 
-const open = ref(false)
+const open = ref(true)
 const loading = ref(false)
 const toast = useToast()
 const { del } = useApiMutation()
