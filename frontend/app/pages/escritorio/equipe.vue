@@ -8,7 +8,6 @@ import { UAvatar, UBadge, UButton, UDropdownMenu } from '#components'
 
 definePageMeta({ middleware: 'escritorio' })
 
-const { currentOffice } = useCurrentOffice()
 const toast = useToast()
 const { handleError } = useApiError()
 const table = useTemplateRef('table')
@@ -20,7 +19,6 @@ const pagination = ref({ pageIndex: 0, pageSize: 20 })
 
 const queryParams = computed(() => ({
   search: searchInput.value || undefined,
-  office_id: currentOffice.value?.id,
   per_page: pagination.value.pageSize
 }))
 
@@ -180,7 +178,7 @@ const columns: TableColumn<AppUser>[] = [
         </template>
 
         <template #right>
-          <UsuariosAddModal :office-id="currentOffice?.id" @created="refresh()" />
+          <UsuariosAddModal @created="refresh()" />
         </template>
       </UDashboardNavbar>
     </template>
