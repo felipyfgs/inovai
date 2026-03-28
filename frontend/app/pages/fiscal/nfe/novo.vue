@@ -168,7 +168,7 @@ const state = reactive<NotaState>({
   tipo_operacao: 2,
   finalidade: 1,
   pessoa_id: null,
-  data_emissao: new Date().toISOString().split('T')[0],
+  data_emissao: new Date().toISOString().split('T')[0] ?? '',
   data_saida: '',
   transportadora_id: null,
   frete_por: 9,
