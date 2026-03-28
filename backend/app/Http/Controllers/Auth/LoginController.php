@@ -27,16 +27,16 @@ class LoginController extends Controller
 
         if (! $user->is_active) {
             Auth::logout();
+            $request->session()->invalidate();
             throw ValidationException::withMessages([
                 'email' => ['Sua conta está desativada. Entre em contato com o suporte.'],
             ]);
         }
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $request->session()->regenerate();
 
         return response()->json([
             'user' => $user->load('office'),
-            'token' => $token,
         ]);
     }
 }
